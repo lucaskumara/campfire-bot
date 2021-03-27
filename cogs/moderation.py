@@ -34,7 +34,8 @@ class Moderation(commands.Cog):
         if isinstance(member, discord.Member):
             await ctx.guild.kick(member, reason=reason)
         elif isinstance(member, int):
-            await ctx.guild.kick(ctx.guild.get_member(member))
+            member = ctx.guild.get_member(member)
+            await ctx.guild.kick(member, reason=reason)
         await ctx.send(f'{member} has been kicked.')
 
     @commands.command()
@@ -43,7 +44,8 @@ class Moderation(commands.Cog):
         if isinstance(member, discord.Member):
             await ctx.guild.ban(member, reason=reason)
         elif isinstance(member, int):
-            await ctx.guild.ban(ctx.guild.get_member(member))
+            member = ctx.guild.get_member(member)
+            await ctx.guild.ban(member, reason=reason)
         await ctx.send(f'{member} has been banned.')
 
     @commands.command()
@@ -52,8 +54,11 @@ class Moderation(commands.Cog):
         if isinstance(user, BannedUser):
             await ctx.guild.unban(user, reason=reason)
         elif isinstance(user, int):
-            ban_entry = discord.utils.find(lambda entry: entry.user.id == user, await ctx.guild.bans())
-            user = ban_entry.user
+
+            def predicate(entry):
+                return entry.user.id == user
+
+            user = discord.utils.find(predicate, await ctx.guild.bans()).user
             await ctx.guild.unban(user, reason=reason)
         await ctx.send(f'{user} has been unbanned.')
 
