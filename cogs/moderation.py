@@ -13,5 +13,11 @@ class Moderation(commands.Cog):
         await ctx.guild.kick(member, reason=reason)
         await ctx.send(f'{member} has been kicked.')
 
+    @commands.command()
+    async def ban(self, ctx, member : discord.Member, *, reason=None):
+        '''Bans a member from the server.'''
+        await ctx.guild.ban(member, reason=reason)
+        await ctx.send(f'{member} has been banned.')
+
 def setup(bot):
     bot.add_cog(Moderation(bot))
