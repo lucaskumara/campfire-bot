@@ -1,4 +1,5 @@
 import discord
+
 from discord.ext import commands
 from typing import Union
 
@@ -33,9 +34,11 @@ class Moderation(commands.Cog):
         '''Kicks a member from the server.'''
         if isinstance(member, discord.Member):
             await ctx.guild.kick(member, reason=reason)
+
         elif isinstance(member, int):
             member = ctx.guild.get_member(member)
             await ctx.guild.kick(member, reason=reason)
+
         await ctx.send(f'{member} has been kicked.')
 
     @commands.command()
@@ -43,9 +46,11 @@ class Moderation(commands.Cog):
         '''Bans a member from the server.'''
         if isinstance(member, discord.Member):
             await ctx.guild.ban(member, reason=reason)
+
         elif isinstance(member, int):
             member = ctx.guild.get_member(member)
             await ctx.guild.ban(member, reason=reason)
+
         await ctx.send(f'{member} has been banned.')
 
     @commands.command()
@@ -53,6 +58,7 @@ class Moderation(commands.Cog):
         '''Unbans a user from the server.'''
         if isinstance(user, BannedUser):
             await ctx.guild.unban(user, reason=reason)
+
         elif isinstance(user, int):
 
             def predicate(entry):
@@ -61,6 +67,7 @@ class Moderation(commands.Cog):
 
             user = discord.utils.find(predicate, await ctx.guild.bans()).user
             await ctx.guild.unban(user, reason=reason)
+
         await ctx.send(f'{user} has been unbanned.')
 
 
