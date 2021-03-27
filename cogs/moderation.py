@@ -10,6 +10,7 @@ class BannedUser(commands.Converter):
         banned_users = await ctx.guild.bans()
         user_name, user_discriminator = argument.split('#')
 
+        # Loop through entries to locate target user
         for ban_entry in banned_users:
             user = ban_entry.user
 
