@@ -3,6 +3,7 @@ from discord.ext import commands
 
 
 class BannedUser(commands.Converter):
+    '''Converter for finding banned users.'''
 
     async def convert(self, ctx, argument):
         '''Converts argument to a user object.'''
@@ -18,6 +19,7 @@ class BannedUser(commands.Converter):
 
 
 class Moderation(commands.Cog):
+    '''Cog containing commands for server moderation.'''
 
     def __init__(self, bot):
         self.bot = bot
