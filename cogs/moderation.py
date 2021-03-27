@@ -17,6 +17,8 @@ class BannedUser(commands.Converter):
                     (user_name, user_discriminator):
                 return user
 
+        raise commands.BadArgument(message='Banned user not found')
+
 
 class Moderation(commands.Cog):
     '''Cog containing commands for server moderation.'''
