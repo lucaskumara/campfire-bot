@@ -37,7 +37,7 @@ class Moderation(commands.Cog):
         await ctx.send(f'{member} has been banned.')
 
     @commands.command()
-    async def unban(self, ctx, user  BannedUser, *, reason=None):
+    async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
         await ctx.guild.unban(user)
         await ctx.send(f'{user} has been unbanned.')
