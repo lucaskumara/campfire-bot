@@ -56,6 +56,7 @@ class Moderation(commands.Cog):
         elif isinstance(user, int):
 
             def predicate(entry):
+                '''Check if id matches banned user.'''
                 return entry.user.id == user
 
             user = discord.utils.find(predicate, await ctx.guild.bans()).user
