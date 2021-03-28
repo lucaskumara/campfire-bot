@@ -81,14 +81,8 @@ class Moderation(commands.Cog):
     @commands.command()
     async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
-
-        def predicate(entry):
-            '''Check if target user matches banned user.'''
-            return entry.user == user
-
-        user = discord.utils.find(predicate, await ctx.guild.bans()).user
+        user = discord.utils.find(lambda e: e.user == user, await ctx.guild.bans()).user
         await ctx.guild.unban(user, reason=reason)
-
         await ctx.send(f'{user} has been unbanned.')
 
 
