@@ -11,15 +11,17 @@ class BannedUser(commands.Converter):
     async def convert(self, ctx, argument):
         '''Converts argument to a user object.'''
         user_name, user_discriminator = argument.split('#')
-        
+
         # Find ban entry if exists
-        predicate = lambda e: (e.user.name, e.user.discriminator) == \
-            (user_name, user_discriminator)
+        def predicate(e):
+            return e.user.name, e.user.discriminator == \
+                user_name, user_discriminator
+
         entry = discord.utils.find(predicate, await ctx.guild.bans())
 
         if entry is not None:
             return entry.user
-        
+
         raise commands.BadArgument(message='Banned user not found')
 
 
@@ -50,7 +52,8 @@ class Moderation(commands.Cog):
         await ctx.send(f'{member} has been kicked.')
 
     @commands.command()
-    async def ban(self, ctx, member: discord.Member, duration: Optional[TimePeriod] = None, *, reason=None):
+    async def ban(self, ctx, member: discord.Member,
+                  duration: Optional[TimePeriod]=None, *, reason=None):
         '''Bans a member from the server.'''
         await ctx.guild.ban(member, reason=reason)
 
@@ -58,7 +61,7 @@ class Moderation(commands.Cog):
             await ctx.send(f'{member} has been banned.')
         else:
             await ctx.send(f'{member} has been temporarily banned.')
-            
+
             multiplier = {
                 's': 1,
                 'm': 60,
@@ -73,16 +76,21 @@ class Moderation(commands.Cog):
             await asyncio.sleep(amount * multiplier[unit])
 
             # Check if user is still banned
-            find_user = lambda e: e.user == member
+            def find_user(e):
+                return e.user == member
+
             ban_entry = discord.utils.find(find_user, await ctx.guild.bans())
 
             if ban_entry is not None:
-                await ctx.guild.unban(member, reason='Tempban expired')       
+                await ctx.guild.unban(member, reason='Tempban expired')
 
     @commands.command()
     async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
-        find_user = lambda e: e.user == user
+
+        def find_user(e):
+            return e.user == user
+
         user = discord.utils.find(find_user, await ctx.guild.bans()).user
         await ctx.guild.unban(user, reason=reason)
         await ctx.send(f'{user} has been unbanned.')
