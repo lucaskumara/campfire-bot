@@ -20,6 +20,7 @@ class Admin(commands.Cog):
             self.bot.logger.info(f'{error.__class__.__name__}: {error}')
         else:
             await ctx.message.add_reaction('👍')
+            self.bot.logger.info(f'{extension} loaded')
         finally:
             await ctx.message.delete(delay=self.delete_delay)
 
@@ -34,6 +35,7 @@ class Admin(commands.Cog):
             self.bot.logger.info(f'{error.__class__.__name__}: {error}')
         else:
             await ctx.message.add_reaction('👍')
+            self.bot.logger.info(f'{extension} unloaded')
         finally:
             await ctx.message.delete(delay=self.delete_delay)
 
@@ -48,6 +50,7 @@ class Admin(commands.Cog):
             self.bot.logger.info(f'{error.__class__.__name__}: {error}')
         else:
             await ctx.message.add_reaction('👍')
+            self.bot.logger.info(f'{extension} reloaded')
         finally:
             await ctx.message.delete(delay=self.delete_delay)
 
