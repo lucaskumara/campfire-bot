@@ -73,7 +73,8 @@ class Moderation(commands.Cog):
             await asyncio.sleep(amount * multiplier[unit])
 
             # Check if user is still banned
-            ban_entry = discord.utils.find(lambda e: e.user == member, await ctx.guild.bans())
+            find_user = lambda e: e.user == member
+            ban_entry = discord.utils.find(find_user, await ctx.guild.bans())
 
             if ban_entry is not None:
                 await ctx.guild.unban(member, reason='Tempban expired')       
@@ -81,7 +82,8 @@ class Moderation(commands.Cog):
     @commands.command()
     async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
-        user = discord.utils.find(lambda e: e.user == user, await ctx.guild.bans()).user
+        find_user = lambda e: e.user == user
+        user = discord.utils.find(find_user, await ctx.guild.bans()).user
         await ctx.guild.unban(user, reason=reason)
         await ctx.send(f'{user} has been unbanned.')
 
