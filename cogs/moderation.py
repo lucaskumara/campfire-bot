@@ -1,7 +1,6 @@
 import discord
 
 from discord.ext import commands
-from typing import Union
 
 
 class BannedUser(commands.Converter):
@@ -30,43 +29,27 @@ class Moderation(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def kick(self, ctx, member: Union[discord.Member, int], *, reason=None):
+    async def kick(self, ctx, member: discord.Member, *, reason=None):
         '''Kicks a member from the server.'''
-        if isinstance(member, discord.Member):
-            await ctx.guild.kick(member, reason=reason)
-
-        elif isinstance(member, int):
-            member = ctx.guild.get_member(member)
-            await ctx.guild.kick(member, reason=reason)
-
+        await ctx.guild.kick(member, reason=reason)
         await ctx.send(f'{member} has been kicked.')
 
     @commands.command()
-    async def ban(self, ctx, member: Union[discord.Member, int], *, reason=None):
+    async def ban(self, ctx, member: discord.Member, *, reason=None):
         '''Bans a member from the server.'''
-        if isinstance(member, discord.Member):
-            await ctx.guild.ban(member, reason=reason)
-
-        elif isinstance(member, int):
-            member = ctx.guild.get_member(member)
-            await ctx.guild.ban(member, reason=reason)
-
+        await ctx.guild.ban(member, reason=reason)
         await ctx.send(f'{member} has been banned.')
 
     @commands.command()
-    async def unban(self, ctx, user: Union[BannedUser, int], *, reason=None):
+    async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
-        if isinstance(user, BannedUser):
-            await ctx.guild.unban(user, reason=reason)
 
-        elif isinstance(user, int):
+        def predicate(entry):
+            '''Check if target user matches banned user.'''
+            return entry.user == user
 
-            def predicate(entry):
-                '''Check if id matches banned user.'''
-                return entry.user.id == user
-
-            user = discord.utils.find(predicate, await ctx.guild.bans()).user
-            await ctx.guild.unban(user, reason=reason)
+        user = discord.utils.find(predicate, await ctx.guild.bans()).user
+        await ctx.guild.unban(user, reason=reason)
 
         await ctx.send(f'{user} has been unbanned.')
 
