@@ -10,18 +10,18 @@ class BannedUser(commands.Converter):
 
     async def convert(self, ctx, argument):
         '''Converts argument to a user object.'''
-        banned_users = await ctx.guild.bans()
         user_name, user_discriminator = argument.split('#')
+        
+        # Find ban entry if exists
+        predicate = lambda e: (e.user.name, e.user.discriminator) == \
+            (user_name, user_discriminator)
+        entry = discord.utils.find(predicate, await ctx.guild.bans())
 
-        # Loop through entries to locate target user
-        for ban_entry in banned_users:
-            user = ban_entry.user
-
-            if (user.name, user.discriminator) == \
-                    (user_name, user_discriminator):
-                return user
-
+        if entry is not None:
+            return entry.user
+        
         raise commands.BadArgument(message='Banned user not found')
+
 
 class TimePeriod(commands.Converter):
     '''Converter for checking time intervals.'''
