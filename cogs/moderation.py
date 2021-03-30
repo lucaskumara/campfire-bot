@@ -78,11 +78,7 @@ class Moderation(commands.Cog):
             amount, unit = duration
             await asyncio.sleep(amount * multiplier[unit])
 
-            # Check if user is still banned
-            def find_user(e):
-                return e.user == member
-
-            ban_entry = discord.utils.find(find_user, await ctx.guild.bans())
+            ban_entry = discord.utils.get(await ctx.guild.bans(), user=member)
 
             if ban_entry is not None:
                 await ctx.guild.unban(member, reason='Tempban expired')
