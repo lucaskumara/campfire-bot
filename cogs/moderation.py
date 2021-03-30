@@ -13,7 +13,12 @@ class BannedUser(commands.Converter):
         banned_users = [entry.user for entry in await ctx.guild.bans()]
         user_name, user_discriminator = argument.split('#')
 
-        user = discord.utils.get(banned_users, name=user_name, discriminator=user_discriminator)
+        kwargs = {
+            'name': user_name,
+            'discriminator': user_discriminator
+        }
+
+        user = discord.utils.get(banned_users, **kwargs)
 
         if user is not None:
             return user
@@ -42,7 +47,7 @@ class Moderation(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def kick(self, ctx, member: Union[discord.Member, int], *, 
+    async def kick(self, ctx, member: Union[discord.Member, int], *,
                    reason=None):
         '''Kicks a member from the server.'''
         if isinstance(member, int):
