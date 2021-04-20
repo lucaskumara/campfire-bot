@@ -50,6 +50,7 @@ class Moderation(commands.Cog):
         self.bot = bot
 
     @commands.command()
+    @commands.has_permissions(kick_members=True)
     async def kick(self, ctx, member: Union[discord.Member, int], *,
                    reason=None):
         '''Kicks a member from the server.'''
@@ -60,6 +61,7 @@ class Moderation(commands.Cog):
         await ctx.send(f'{member} has been kicked.')
 
     @commands.command()
+    @commands.has_permissions(ban_members=True)
     async def ban(self, ctx, member: Union[discord.Member, int],
                   duration: Optional[TimePeriod]=None, *, reason=None):
         '''Bans a member from the server.'''
@@ -95,6 +97,7 @@ class Moderation(commands.Cog):
                 await ctx.guild.unban(member, reason='Tempban expired')
 
     @commands.command()
+    @commands.has_permissions(ban_members=True)
     async def unban(self, ctx, user: Union[BannedUser, int], *, reason=None):
         '''Unbans a user from the server.'''
         bans = await ctx.guild.bans()
