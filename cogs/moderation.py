@@ -18,8 +18,10 @@ class BannedUser(commands.Converter):
             'discriminator': user_discriminator
         }
 
+        # Search for banned used
         user = discord.utils.get(banned_users, **kwargs)
 
+        # If banned user was found, return them
         if user is not None:
             return user
 
@@ -34,6 +36,7 @@ class TimePeriod(commands.Converter):
         amount = argument[:-1]
         unit = argument[-1]
 
+        # Check if the amount is a digit and the unit is in the specified list
         if amount.isdigit() and unit in ['s', 'm', 'h', 'd', 'w', 'm', 'y']:
             return (int(amount), unit)
 
@@ -65,6 +68,7 @@ class Moderation(commands.Cog):
 
         await ctx.guild.ban(member, reason=reason)
 
+        # If a duration is specified, treat ban as a temp ban
         if duration is None:
             await ctx.send(f'{member} has been banned.')
         else:
@@ -80,9 +84,11 @@ class Moderation(commands.Cog):
                 'y': 31536000
             }
 
+            # Wait for ban duration
             amount, unit = duration
             await asyncio.sleep(amount * multiplier[unit])
 
+            # Check if user is still banned. If so, unban
             ban_entry = discord.utils.get(await ctx.guild.bans(), user=member)
 
             if ban_entry is not None:
