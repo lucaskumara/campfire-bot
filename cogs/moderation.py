@@ -51,6 +51,7 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
+    @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, member: discord.Member, *, reason=None):
         '''Kicks a member from the server.'''
         await ctx.guild.kick(member, reason=reason)
@@ -58,6 +59,7 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
+    @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx, member: discord.Member,
                   duration: Optional[TimePeriod]=None, *, reason=None):
         '''Bans a member from the server.'''
@@ -91,6 +93,7 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
+    @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
         bans = await ctx.guild.bans()
@@ -100,6 +103,8 @@ class Moderation(commands.Cog):
         await ctx.send(f'{user} has been unbanned.')
 
     @commands.command()
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
     async def clear(self, ctx,
                     targets: commands.Greedy[discord.Member], amount=100):
         '''Clears a specified number of messages from the channel.'''
@@ -120,6 +125,9 @@ class Moderation(commands.Cog):
 
         await ctx.send(f'{len(deleted)} messages deleted.')
 
+    @commands.command()
+    async def test(self, ctx):
+        await ctx.reply('This is a reply.')
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
