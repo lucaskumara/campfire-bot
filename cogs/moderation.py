@@ -110,6 +110,26 @@ class Moderation(commands.Cog):
         await ctx.guild.unban(user, reason=reason)
         await ctx.send(f'{user} has been unbanned.')
 
+    @commands.command()
+    async def clear(self, ctx,
+                    targets: commands.Greedy[discord.Member],
+                    amount=100):
+        '''Clears a specified number of messages from the channel.'''
+        await ctx.message.delete()
+
+        if targets == []:
+            deleted = await ctx.message.channel.purge(limit=amount)
+        else:
+            def author_is_target(msg):
+                return msg.author in targets
+                
+            deleted = await ctx.message.channel.purge(
+                limit=amount,
+                check=author_is_target
+            )
+
+        await ctx.send(f'{len(deleted)} messages deleted.')
+
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
