@@ -61,7 +61,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, 
+    async def kick(self, ctx,
                    members: commands.Greedy[commands.MemberConverter], *,
                    reason=None):
         '''Kicks a member from the server.'''
@@ -94,26 +94,67 @@ class Moderation(commands.Cog):
         )
 
         embed.set_footer(
-            text=f'Kicked by {ctx.author}', 
+            text=f'Kicked by {ctx.author}',
             icon_url=ctx.author.avatar_url
         )
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, member: commands.MemberConverter,
+    async def ban(self, ctx,
+                  members: commands.Greedy[commands.MemberConverter],
                   duration: Optional[TimePeriod]=None, *, reason=None):
         '''Bans a member from the server.'''
-        await ctx.guild.ban(member, reason=reason)
+        for member in members:
+            await ctx.guild.ban(member, reason=reason)
 
-        # If a duration is specified, treat ban as a temp ban
+        banned_members = [str(member) for member in members]
+
+        embed = discord.Embed(
+            description=f'Banned `{len(members)}` member(s)',
+            colour=discord.Color.orange(),
+            timestamp=ctx.message.created_at
+        )
+
+        embed.set_author(
+            name='Campfire',
+            icon_url=self.bot.user.avatar_url
+        )
+
+        embed.add_field(
+            name='Banned members',
+            value='```' + '\n'.join(banned_members) + '```',
+            inline=False
+        )
+
         if duration is None:
-            await ctx.send(f'{member} has been banned.')
+            embed.add_field(
+                name='Duration',
+                value='```Permanent```'
+            )
         else:
-            await ctx.send(f'{member} has been temporarily banned.')
+            embed.add_field(
+                name='Duration',
+                value=f'```{duration[0]}{duration[1]}```'
+            )
 
+        embed.add_field(
+            name='Reason',
+            value=f'```{reason}```',
+        )
+
+        embed.set_footer(
+            text=f'Banned by {ctx.author}',
+            icon_url=ctx.author.avatar_url
+        )
+
+        await ctx.reply(embed=embed)
+
+        if duration is not None:
+
+            # Seconds multipliers
             multiplier = {
                 's': 1,
                 'm': 60,
@@ -124,15 +165,18 @@ class Moderation(commands.Cog):
                 'y': 31536000
             }
 
-            # Wait for ban duration
+            # Sleep for the specified duration
             amount, unit = duration
             await asyncio.sleep(amount * multiplier[unit])
 
-            # Check if user is still banned. If so, unban
-            ban_entry = discord.utils.get(await ctx.guild.bans(), user=member)
+            banned_users = await ctx.guild.bans()
 
-            if ban_entry is not None:
-                await ctx.guild.unban(member, reason='Tempban expired')
+            # Check if users are still banned. If so, unban
+            for member in members:
+                ban_entry = discord.utils.get(banned_users, user=member)
+
+                if ban_entry is not None:
+                    await ctx.guild.unban(member, reason='Tempban expired')
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
