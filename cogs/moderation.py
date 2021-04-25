@@ -11,21 +11,30 @@ class BannedUser(commands.Converter):
     async def convert(self, ctx, argument):
         '''Converts argument to a user object.'''
         banned_users = [entry.user for entry in await ctx.guild.bans()]
-        user_name, user_discriminator = argument.split('#')
 
-        kwargs = {
-            'name': user_name,
-            'discriminator': user_discriminator
-        }
+        # If argument could be a user id
+        if argument.isdigit():
+            user = discord.utils.get(banned_users, id=int(argument))
+        else:
 
-        # Search for banned used
-        user = discord.utils.get(banned_users, **kwargs)
+            # If argument is a users name
+            if '#' not in argument:
+                user = discord.utils.get(banned_users, name=argument)
 
-        # If banned user was found, return them
+            # If argument is a users name and discriminator
+            else:
+                user_name, user_discriminator = argument.split('#')
+                kwargs = {
+                    'name': user_name,
+                    'discriminator': user_discriminator
+                }
+
+                user = discord.utils.get(banned_users, **kwargs)
+
         if user is not None:
             return user
 
-        raise commands.BadArgument(message='Banned user not found')
+        raise commands.UserNotFound(argument)
 
 
 class TimePeriod(commands.Converter):
