@@ -61,11 +61,44 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, member: commands.MemberConverter, *,
+    async def kick(self, ctx, 
+                   members: commands.Greedy[commands.MemberConverter], *,
                    reason=None):
         '''Kicks a member from the server.'''
-        await ctx.guild.kick(member, reason=reason)
-        await ctx.send(f'{member} has been kicked.')
+        for member in members:
+            await ctx.guild.kick(member, reason=reason)
+
+        kicked_members = [str(member) for member in members]
+
+        embed = discord.Embed(
+            description=f'Kicked `{len(members)}` member(s)',
+            colour=discord.Color.orange(),
+            timestamp=ctx.message.created_at
+        )
+
+        embed.set_author(
+            name='Campfire',
+            icon_url=self.bot.user.avatar_url
+        )
+
+        embed.add_field(
+            name='Kicked members',
+            value='```' + '\n'.join(kicked_members) + '```',
+            inline=False
+        )
+
+        embed.add_field(
+            name='Reason',
+            value=f'```{reason}```',
+            inline=False
+        )
+
+        embed.set_footer(
+            text=f'Kicked by {ctx.author}', 
+            icon_url=ctx.author.avatar_url
+        )
+
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
