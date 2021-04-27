@@ -167,13 +167,37 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx, user: BannedUser, *, reason=None):
+    async def unban(self, ctx, users: commands.Greedy[BannedUser], *,
+                    reason=None):
         '''Unbans a user from the server.'''
         bans = await ctx.guild.bans()
-        user = discord.utils.get(bans, user=user).user
 
-        await ctx.guild.unban(user, reason=reason)
-        await ctx.send(f'{user} has been unbanned.')
+        for user in users:
+            if discord.utils.get(bans, user=user) is not None:
+                await ctx.guild.unban(user, reason=reason)
+
+        # Create string of kicked members
+        unbanned_users = '\n'.join([str(user) for user in users])
+
+        # Create embed
+        embed = discord.Embed(
+            description=f'Unbanned `{len(users)}` users(s)',
+            colour=discord.Color.orange(),
+            timestamp=ctx.message.created_at
+        )
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
+        embed.add_field(
+            name='Unbanned members',
+            value=f'```{unbanned_users}```',
+            inline=False
+        )
+        embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
+        embed.set_footer(
+            text=f'Unbanned by {ctx.author}',
+            icon_url=ctx.author.avatar_url
+        )
+
+        await ctx.reply(embed=embed)
 
     @commands.command()
     @commands.has_permissions(manage_messages=True)
