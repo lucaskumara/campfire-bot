@@ -68,31 +68,22 @@ class Moderation(commands.Cog):
         for member in members:
             await ctx.guild.kick(member, reason=reason)
 
-        kicked_members = [str(member) for member in members]
+        # Create string of kicked members
+        kicked_members = '\n'.join([str(member) for member in members])
 
+        # Create embed
         embed = discord.Embed(
             description=f'Kicked `{len(members)}` member(s)',
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
-
-        embed.set_author(
-            name='Campfire',
-            icon_url=self.bot.user.avatar_url
-        )
-
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
         embed.add_field(
             name='Kicked members',
-            value='```' + '\n'.join(kicked_members) + '```',
+            value=f'```{kicked_members}```',
             inline=False
         )
-
-        embed.add_field(
-            name='Reason',
-            value=f'```{reason}```',
-            inline=False
-        )
-
+        embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
         embed.set_footer(
             text=f'Kicked by {ctx.author}',
             icon_url=ctx.author.avatar_url
@@ -110,25 +101,23 @@ class Moderation(commands.Cog):
         for member in members:
             await ctx.guild.ban(member, reason=reason)
 
-        banned_members = [str(member) for member in members]
+        # Create string of banned members
+        banned_members = '\n'.join([str(member) for member in members])
 
+        # Create embed
         embed = discord.Embed(
             description=f'Banned `{len(members)}` member(s)',
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
-
-        embed.set_author(
-            name='Campfire',
-            icon_url=self.bot.user.avatar_url
-        )
-
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
         embed.add_field(
             name='Banned members',
-            value='```' + '\n'.join(banned_members) + '```',
+            value=f'```{banned_members}```',
             inline=False
         )
 
+        # Create field based on existence of tempban
         if duration is None:
             embed.add_field(
                 name='Duration',
@@ -140,11 +129,7 @@ class Moderation(commands.Cog):
                 value=f'```{duration[0]}{duration[1]}```'
             )
 
-        embed.add_field(
-            name='Reason',
-            value=f'```{reason}```',
-        )
-
+        embed.add_field(name='Reason', value=f'```{reason}```')
         embed.set_footer(
             text=f'Banned by {ctx.author}',
             icon_url=ctx.author.avatar_url
@@ -152,6 +137,7 @@ class Moderation(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+        # Handle tempban
         if duration is not None:
 
             # Seconds multipliers
