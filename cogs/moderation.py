@@ -58,21 +58,35 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
         '''Kicks a member from the server.'''
+
+        # If no member was specified
+        if members == []:
+            embed = discord.Embed(description='You must specify at least one member to kick.')
+            await ctx.reply(embed=embed)
+            return
+
+        kicked_members = members[:]
+
+        # Kick members
         for member in members:
-            await ctx.guild.kick(member, reason=reason)
+            try:
+                await ctx.guild.kick(member, reason=reason)
+            except:
+                kicked_members.remove(member)
 
         # Create string of kicked members
-        kicked_members = '\n'.join([str(member) for member in members])
+        kicked_members_string = '\n'.join([str(member) for member in kicked_members]) or None
 
         # Create embed
         embed = discord.Embed(
-            description=f'Kicked `{len(members)}` member(s)',
+            description=f'Successfully kicked `{len(kicked_members)}/{len(members)}` member(s)',
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
 
+        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        embed.add_field(name='Kicked members', value=f'```{kicked_members}```', inline=False)
+        embed.add_field(name='Kicked members', value=f'```{kicked_members_string}```', inline=False)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
         embed.set_footer(text=f'Kicked by {ctx.author}', icon_url=ctx.author.avatar_url)
 
