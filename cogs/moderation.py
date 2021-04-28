@@ -97,21 +97,35 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[TimePeriod]=None, *, reason=None):
         '''Bans a member from the server.'''
+
+        # If no member was specified
+        if members == []:
+            embed = discord.Embed(description='You must specify at least one member to ban.')
+            await ctx.reply(embed=embed)
+            return
+
+        banned_members = members[:]
+
+        # Ban members
         for member in members:
-            await ctx.guild.ban(member, reason=reason)
+            try:
+                await ctx.guild.ban(member, reason=reason)
+            except:
+                banned_members.remove(member)
 
         # Create string of banned members
-        banned_members = '\n'.join([str(member) for member in members])
+        banned_members_string = '\n'.join([str(member) for member in banned_members]) or None
 
         # Create embed
         embed = discord.Embed(
-            description=f'Banned `{len(members)}` member(s)',
+            description=f'Successfully banned `{len(banned_members)}/{len(members)}` member(s)',
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
 
+        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        embed.add_field(name='Banned members', value=f'```{banned_members}```', inline=False)
+        embed.add_field(name='Banned members', value=f'```{banned_members_string}```', inline=False)
 
         # Create field based on existence of tempban
         if duration is None:
@@ -119,7 +133,7 @@ class Moderation(commands.Cog):
         else:
             embed.add_field(name='Duration', value=f'```{duration[0]}{duration[1]}```')
 
-        embed.add_field(name='Reason', value=f'```{reason}```')
+        embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
         embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
