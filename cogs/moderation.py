@@ -24,12 +24,7 @@ class BannedUser(commands.Converter):
             # If argument is a users name and discriminator
             else:
                 user_name, user_discriminator = argument.split('#')
-                kwargs = {
-                    'name': user_name,
-                    'discriminator': user_discriminator
-                }
-
-                user = discord.utils.get(banned_users, **kwargs)
+                user = discord.utils.get(banned_users, name=user_name, discriminator=user_discriminator)
 
         if user is not None:
             return user
@@ -61,9 +56,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx,
-                   members: commands.Greedy[commands.MemberConverter], *,
-                   reason=None):
+    async def kick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
         '''Kicks a member from the server.'''
         for member in members:
             await ctx.guild.kick(member, reason=reason)
@@ -77,26 +70,18 @@ class Moderation(commands.Cog):
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
+
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        embed.add_field(
-            name='Kicked members',
-            value=f'```{kicked_members}```',
-            inline=False
-        )
+        embed.add_field(name='Kicked members', value=f'```{kicked_members}```', inline=False)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
-        embed.set_footer(
-            text=f'Kicked by {ctx.author}',
-            icon_url=ctx.author.avatar_url
-        )
+        embed.set_footer(text=f'Kicked by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx,
-                  members: commands.Greedy[commands.MemberConverter],
-                  duration: Optional[TimePeriod]=None, *, reason=None):
+    async def ban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[TimePeriod]=None, *, reason=None):
         '''Bans a member from the server.'''
         for member in members:
             await ctx.guild.ban(member, reason=reason)
@@ -110,30 +95,18 @@ class Moderation(commands.Cog):
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
+
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        embed.add_field(
-            name='Banned members',
-            value=f'```{banned_members}```',
-            inline=False
-        )
+        embed.add_field(name='Banned members', value=f'```{banned_members}```', inline=False)
 
         # Create field based on existence of tempban
         if duration is None:
-            embed.add_field(
-                name='Duration',
-                value='```Permanent```'
-            )
+            embed.add_field(name='Duration', value='```Permanent```')
         else:
-            embed.add_field(
-                name='Duration',
-                value=f'```{duration[0]}{duration[1]}```'
-            )
+            embed.add_field(name='Duration', value=f'```{duration[0]}{duration[1]}```')
 
         embed.add_field(name='Reason', value=f'```{reason}```')
-        embed.set_footer(
-            text=f'Banned by {ctx.author}',
-            icon_url=ctx.author.avatar_url
-        )
+        embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
 
@@ -155,11 +128,9 @@ class Moderation(commands.Cog):
             amount, unit = duration
             await asyncio.sleep(amount * multiplier[unit])
 
-            banned_users = await ctx.guild.bans()
-
             # Check if users are still banned. If so, unban
             for member in members:
-                ban_entry = discord.utils.get(banned_users, user=member)
+                ban_entry = discord.utils.get(await ctx.guild.bans(), user=member)
 
                 if ban_entry is not None:
                     await ctx.guild.unban(member, reason='Tempban expired')
@@ -167,13 +138,10 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx, users: commands.Greedy[BannedUser], *,
-                    reason=None):
+    async def unban(self, ctx, users: commands.Greedy[BannedUser], *, reason=None):
         '''Unbans a user from the server.'''
-        bans = await ctx.guild.bans()
-
         for user in users:
-            if discord.utils.get(bans, user=user) is not None:
+            if discord.utils.get(await ctx.guild.bans(), user=user) is not None:
                 await ctx.guild.unban(user, reason=reason)
 
         # Create string of kicked members
@@ -185,41 +153,33 @@ class Moderation(commands.Cog):
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
+
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        embed.add_field(
-            name='Unbanned members',
-            value=f'```{unbanned_users}```',
-            inline=False
-        )
+        embed.add_field(name='Unbanned members', value=f'```{unbanned_users}```', inline=False)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
-        embed.set_footer(
-            text=f'Unbanned by {ctx.author}',
-            icon_url=ctx.author.avatar_url
-        )
+        embed.set_footer(text=f'Unbanned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
 
     @commands.command()
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def clear(self, ctx,
-                    targets: commands.Greedy[commands.MemberConverter],
-                    amount=100):
+    async def clear(self, ctx, targets: commands.Greedy[commands.MemberConverter], amount=100):
         '''Clears a specified number of messages from the channel.'''
         await ctx.message.delete()
 
+        # Delete all messages within limit
         if targets == []:
             deleted = await ctx.message.channel.purge(limit=amount)
+
+        # Delete all messages by targets
         else:
 
             def author_is_target(msg):
                 '''Checks if a message is written by a target member.'''
                 return msg.author in targets
 
-            deleted = await ctx.message.channel.purge(
-                limit=amount,
-                check=author_is_target
-            )
+            deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
         await ctx.send(f'{len(deleted)} messages deleted.')
 
