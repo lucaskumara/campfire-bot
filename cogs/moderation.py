@@ -166,36 +166,22 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx, users: commands.Greedy[BannedUser], *, reason=None):
+    async def unban(self, ctx, user: BannedUser, *, reason=None):
         '''Unbans a user from the server.'''
-        # If no user was specified
-        if users == []:
-            embed = discord.Embed(description='You must specify at least one user to unban.')
-            await ctx.reply(embed=embed)
-            return
 
-        unbanned_users = users[:]
-
-        # Unban users who are still banned
-        for user in users:
-            try:
-                await ctx.guild.unban(user, reason=reason)
-            except:
-                unbanned_users.remove(user)
-
-        # Create string of kicked members
-        unbanned_users_string = '\n'.join([str(user) for user in unbanned_users]) or None
+        # Ban user
+        if discord.utils.get(await ctx.guild.bans(), user=user) is not None:
+            await ctx.guild.unban(user, reason=reason)
 
         # Create embed
         embed = discord.Embed(
-            description=f'Successfully unbanned `{len(unbanned_users)}/{len(users)}` users(s)',
+            description=f'Successfully unbanned `{user}`',
             colour=discord.Color.orange(),
             timestamp=ctx.message.created_at
         )
 
         # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        embed.add_field(name='Unbanned members', value=f'```{unbanned_users_string}```', inline=False)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
         embed.set_footer(text=f'Unbanned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
