@@ -56,18 +56,51 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
+    async def kick(self, ctx, member: commands.MemberConverter, *, reason=None):
         '''Kicks a member from the server.'''
 
-        # If no member was specified
-        if members == []:
-            embed = discord.Embed(description='You must specify at least one member to kick.')
-            await ctx.reply(embed=embed)
-            return
+        # Kick member
+        await ctx.guild.kick(member, reason=reason)
 
+        # Create embed
+        embed = discord.Embed(
+            description=f'Kicked `{member}`',
+            colour=discord.Colour.orange(),
+            timestamp=ctx.message.created_at
+        )
+
+        # Modify embed
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
+        embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
+        embed.set_footer(text=f'Kicked by {ctx.author}', icon_url=ctx.author.avatar_url)
+
+        await ctx.reply(embed=embed)
+
+    @commands.command()
+    @commands.has_permissions(kick_members=True)
+    @commands.bot_has_permissions(kick_members=True)
+    async def masskick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
+        '''Kicks multiple members from the server.'''
+
+        # Create confirmation embed and check
+        confirmation_embed = discord.Embed(
+            description=f'Are you sure you would like to ban {len(members)} members? (Y/N)',
+            colour=discord.Color.orange()
+        )
+
+        def confirmation(msg):
+            return msg.content.lower() in ['y', 'yes', 'n', 'no']
+            
+        # Send confirmation prompt and wait for response
+        confirmation_prompt = await ctx.send(embed=confirmation_embed)
+        confirmation_choice = await self.bot.wait_for('message', check=confirmation)
+
+        # Delete confirmation prompt and response
+        await confirmation_prompt.delete()
+        await confirmation_choice.delete()
+
+        # Try to kick all members and store the ones that were kicked
         kicked_members = members[:]
-
-        # Kick members
         for member in members:
             try:
                 await ctx.guild.kick(member, reason=reason)
@@ -77,7 +110,7 @@ class Moderation(commands.Cog):
         # Create string of kicked members
         kicked_members_string = '\n'.join([str(member) for member in kicked_members]) or None
 
-        # Create embed
+        # Create final embed
         embed = discord.Embed(
             description=f'Successfully kicked `{len(kicked_members)}/{len(members)}` member(s)',
             colour=discord.Color.orange(),
