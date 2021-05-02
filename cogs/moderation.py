@@ -52,25 +52,25 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.sleep_multiplier = {
+            's': 1,
+            'm': 60,
+            'h': 3600,
+            'd': 86400,
+            'w': 604800,
+            'm': 2592000,
+            'y': 31540000
+        }
 
     async def handle_tempban(self, ctx, member, duration):
         '''Unbans user once tempban expires.'''
+
+        # If there is no duration, user hasn't been tempbanned
         if duration is not None:
 
-            # Seconds multipliers
-            multiplier = {
-                's': 1,
-                'm': 60,
-                'h': 3600,
-                'd': 86400,
-                'w': 604800,
-                'm': 2592000,
-                'y': 31540000
-            }
-
-            # Sleep for the specified duration
+            # Sleep for the duration
             amount, unit = duration
-            await asyncio.sleep(amount * multiplier[unit])
+            await asyncio.sleep(amount * self.sleep_multiplier[unit])
 
             # Check if users are still banned. If so, unban
             if discord.utils.get(await ctx.guild.bans(), user=member) is not None:
