@@ -156,6 +156,7 @@ class Moderation(commands.Cog):
 
         # Ban member
         await ctx.guild.ban(member, reason=reason)
+        await self.handle_tempban(ctx, member, duration)
 
         # Create embed
         embed = discord.Embed(
@@ -177,7 +178,6 @@ class Moderation(commands.Cog):
         embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
-        await self.handle_tempban(ctx, member, duration)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -203,6 +203,7 @@ class Moderation(commands.Cog):
         for member in members:
             try:
                 await ctx.guild.ban(member, reason=reason)
+                await self.handle_tempban(ctx, member, duration)
             except:
                 banned_members.remove(member)
 
@@ -230,7 +231,6 @@ class Moderation(commands.Cog):
         embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
-        await self.handle_tempban(ctx, member, duration)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
