@@ -32,7 +32,7 @@ class BannedUser(commands.Converter):
         raise commands.UserNotFound(argument)
 
 
-class TimePeriod(commands.Converter):
+class DurationConverter(commands.Converter):
     '''Converter for checking time intervals.'''
 
     async def convert(self, ctx, argument):
@@ -52,6 +52,29 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+    async def handle_tempban(self, ctx, member, duration):
+        '''Unbans user once tempban expires.'''
+        if duration is not None:
+
+            # Seconds multipliers
+            multiplier = {
+                's': 1,
+                'm': 60,
+                'h': 3600,
+                'd': 86400,
+                'w': 604800,
+                'm': 2592000,
+                'y': 31540000
+            }
+
+            # Sleep for the specified duration
+            amount, unit = duration
+            await asyncio.sleep(amount * multiplier[unit])
+
+            # Check if users are still banned. If so, unban
+            if discord.utils.get(await ctx.guild.bans(), user=member) is not None:
+                await ctx.guild.unban(member, reason='Tempban expired')
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
@@ -90,7 +113,7 @@ class Moderation(commands.Cog):
 
         def confirmation(msg):
             return msg.content.lower() in ['y', 'yes', 'n', 'no']
-            
+
         # Send confirmation prompt and wait for response
         confirmation_prompt = await ctx.send(embed=confirmation_embed)
         confirmation_choice = await self.bot.wait_for('message', check=confirmation)
@@ -128,18 +151,55 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[TimePeriod]=None, *, reason=None):
+    async def ban(self, ctx, member: commands.MemberConverter, duration: Optional[DurationConverter]=None, *, reason=None):
         '''Bans a member from the server.'''
 
-        # If no member was specified
-        if members == []:
-            embed = discord.Embed(description='You must specify at least one member to ban.')
-            await ctx.reply(embed=embed)
-            return
+        # Ban member
+        await ctx.guild.ban(member, reason=reason)
 
+        # Create embed
+        embed = discord.Embed(
+            description=f'Banned `{member}`',
+            colour=discord.Colour.orange(),
+            timestamp=ctx.message.created_at
+        )
+
+        # Modify embed
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
+
+        # Create field based on existence of tempban
+        if duration is None:
+            embed.add_field(name='Duration', value='```Permanent```')
+        else:
+            embed.add_field(name='Duration', value=f'```{duration[0]}{duration[1]}```')
+
+        embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
+        embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
+
+        await ctx.reply(embed=embed)
+        await self.handle_tempban(ctx, member, duration)
+
+    @commands.command()
+    @commands.has_permissions(ban_members=True)
+    @commands.bot_has_permissions(ban_members=True)
+    async def massban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[DurationConverter]=None, *, reason=None):
+        '''Bans multiple members from the server.'''
+
+        # Create confirmation embed and check
+        confirmation_embed = discord.Embed(
+            description=f'Are you sure you would like to ban {len(members)} members? (Y/N)',
+            colour=discord.Color.orange()
+        )
+
+        def confirmation(msg):
+            return ctx.author == msg.author and msg.content.lower() in ['y', 'yes', 'n', 'no']
+
+        # Send confirmation prompt and wait for response
+        confirmation_prompt = await ctx.send(embed=confirmation_embed)
+        confirmation_choice = await self.bot.wait_for('message', check=confirmation)
+
+        # Try to kick all members and store the ones that were kicked
         banned_members = members[:]
-
-        # Ban members
         for member in members:
             try:
                 await ctx.guild.ban(member, reason=reason)
@@ -149,7 +209,7 @@ class Moderation(commands.Cog):
         # Create string of banned members
         banned_members_string = '\n'.join([str(member) for member in banned_members]) or None
 
-        # Create embed
+        # Create final embed
         embed = discord.Embed(
             description=f'Successfully banned `{len(banned_members)}/{len(members)}` member(s)',
             colour=discord.Color.orange(),
@@ -170,31 +230,7 @@ class Moderation(commands.Cog):
         embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
-
-        # Handle tempban
-        if duration is not None:
-
-            # Seconds multipliers
-            multiplier = {
-                's': 1,
-                'm': 60,
-                'h': 3600,
-                'd': 86400,
-                'w': 604800,
-                'm': 2592000,
-                'y': 31536000
-            }
-
-            # Sleep for the specified duration
-            amount, unit = duration
-            await asyncio.sleep(amount * multiplier[unit])
-
-            # Check if users are still banned. If so, unban
-            for member in members:
-                ban_entry = discord.utils.get(await ctx.guild.bans(), user=member)
-
-                if ban_entry is not None:
-                    await ctx.guild.unban(member, reason='Tempban expired')
+        await self.handle_tempban(ctx, member, duration)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
