@@ -177,6 +177,8 @@ class Moderation(commands.Cog):
         embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
+
+        # Handle the tempban process if the member was banned for a specific duration
         await self.handle_tempban(ctx, member, duration)
 
     @commands.command()
@@ -230,6 +232,8 @@ class Moderation(commands.Cog):
         embed.set_footer(text=f'Banned by {ctx.author}', icon_url=ctx.author.avatar_url)
 
         await ctx.reply(embed=embed)
+
+        # Handle the tempban process if the members were banned for a specific duration
         await self.handle_tempban(ctx, member, duration)
 
     @commands.command()
