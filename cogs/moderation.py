@@ -59,7 +59,7 @@ class Moderation(commands.Cog):
             'd': 86400,
             'w': 604800,
             'm': 2592000,
-            'y': 31540000
+            'y': 31536000
         }
 
     async def handle_tempban(self, ctx, member, duration):
@@ -281,7 +281,7 @@ class Moderation(commands.Cog):
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
         await ctx.send(f'{len(deleted)} messages deleted.')
-
+        
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
