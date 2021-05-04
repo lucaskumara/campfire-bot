@@ -108,7 +108,7 @@ class Moderation(commands.Cog):
         # Create confirmation embed and check
         confirmation_embed = discord.Embed(
             description=f'Are you sure you would like to ban {len(members)} members? (Y/N)',
-            colour=discord.Color.orange()
+            colour=discord.Colour.orange()
         )
 
         def confirmation(msg):
@@ -136,7 +136,7 @@ class Moderation(commands.Cog):
         # Create final embed
         embed = discord.Embed(
             description=f'Successfully kicked `{len(kicked_members)}/{len(members)}` member(s)',
-            colour=discord.Color.orange(),
+            colour=discord.Colour.orange(),
             timestamp=ctx.message.created_at
         )
 
@@ -190,7 +190,7 @@ class Moderation(commands.Cog):
         # Create confirmation embed and check
         confirmation_embed = discord.Embed(
             description=f'Are you sure you would like to ban {len(members)} members? (Y/N)',
-            colour=discord.Color.orange()
+            colour=discord.Colour.orange()
         )
 
         def confirmation(msg):
@@ -214,7 +214,7 @@ class Moderation(commands.Cog):
         # Create final embed
         embed = discord.Embed(
             description=f'Successfully banned `{len(banned_members)}/{len(members)}` member(s)',
-            colour=discord.Color.orange(),
+            colour=discord.Colour.orange(),
             timestamp=ctx.message.created_at
         )
 
@@ -249,7 +249,7 @@ class Moderation(commands.Cog):
         # Create embed
         embed = discord.Embed(
             description=f'Successfully unbanned `{user}`',
-            colour=discord.Color.orange(),
+            colour=discord.Colour.orange(),
             timestamp=ctx.message.created_at
         )
 
@@ -281,7 +281,7 @@ class Moderation(commands.Cog):
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
         await ctx.send(f'{len(deleted)} messages deleted.')
-        
+
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
