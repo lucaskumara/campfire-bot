@@ -208,7 +208,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
-            await self.throw_error(ctx, 'Please specify at least one valid member to kick.')
+            await self.throw_error(ctx, 'Please specify at least one valid member to ban.')
             return
 
         # Create confirmation embed and check
@@ -328,7 +328,7 @@ class Moderation(commands.Cog):
         # If specified member is not found
         elif isinstance(error, commands.MemberNotFound):
             await self.throw_error(ctx, 'Please make sure you specify a valid server member.')
-            
+
         else:
             raise error
 
