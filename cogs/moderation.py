@@ -108,7 +108,7 @@ class Moderation(commands.Cog):
 
         # Create confirmation embed and check
         confirmation_embed = discord.Embed(
-            description=f'Are you sure you would like to ban {len(members)} members? (Y/N)',
+            description=f'Are you sure you would like to kick {len(members)} members? (Y/N)',
             colour=discord.Colour.orange()
         )
 
