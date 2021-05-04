@@ -52,7 +52,6 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.error_message_delay = 5
         self.sleep_multiplier = {
             's': 1,
             'm': 60,
@@ -76,6 +75,20 @@ class Moderation(commands.Cog):
             # Check if users are still banned. If so, unban
             if discord.utils.get(await ctx.guild.bans(), user=member) is not None:
                 await ctx.guild.unban(member, reason='Tempban expired')
+
+    async def throw_error(self, ctx, message):
+        '''Sends an error message.'''
+
+        # Delete authors message
+        await ctx.message.delete()
+
+        # Create error embed
+        error_embed = discord.Embed(
+            description=message,
+            colour=discord.Colour.red()
+        )
+
+        await ctx.send(embed=error_embed, delete_after=5)
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
@@ -105,6 +118,11 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(kick_members=True)
     async def masskick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
         '''Kicks multiple members from the server.'''
+
+        # If no members are specified
+        if members == []:
+            await self.throw_error(ctx, 'Please specify at least one valid member to kick.')
+            return
 
         # Create confirmation embed and check
         confirmation_embed = discord.Embed(
@@ -187,6 +205,11 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(ban_members=True)
     async def massban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[DurationConverter]=None, *, reason=None):
         '''Bans multiple members from the server.'''
+
+        # If no members are specified
+        if members == []:
+            await self.throw_error(ctx, 'Please specify at least one valid member to kick.')
+            return
 
         # Create confirmation embed and check
         confirmation_embed = discord.Embed(
@@ -296,13 +319,11 @@ class Moderation(commands.Cog):
 
         # If member is not specified
         if isinstance(error, commands.MissingRequiredArgument):
-            error_embed.description = 'Please make sure you specify a member.'
-            await ctx.send(embed=error_embed, delete_after=self.error_message_delay)
+            await self.throw_error(ctx, 'Please make sure you specify a member.')
 
         # If specified member is not found
         elif isinstance(error, commands.MemberNotFound):
-            error_embed.description = 'Please make sure you specify a valid server member'
-            await ctx.send(embed=error_embed, delete_after=self.error_message_delay)
+            await self.throw_error(ctx, 'Please make sure you specify a valid server member.')
             
         else:
             raise error
