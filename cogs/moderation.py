@@ -52,6 +52,7 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.error_message_delay = 5
         self.sleep_multiplier = {
             's': 1,
             'm': 60,
@@ -281,6 +282,28 @@ class Moderation(commands.Cog):
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
         await ctx.send(f'{len(deleted)} messages deleted.')
+
+    @kick.error
+    @ban.error
+    async def kick_ban_errors(self, ctx, error):
+        '''Error handler for kick and ban commands.'''
+
+        # Delete authors message
+        await ctx.message.delete()
+
+        # Create error embed
+        error_embed = discord.Embed(colour=discord.Colour.red())
+
+        if isinstance(error, commands.MissingRequiredArgument):
+            error_embed.description = 'Please make sure you specify a member.'
+            await ctx.send(embed=error_embed, delete_after=self.error_message_delay)
+
+        elif isinstance(error, commands.MemberNotFound):
+            error_embed.description = 'Please make sure you specify a valid server member'
+            await ctx.send(embed=error_embed, delete_after=self.error_message_delay)
+            
+        else:
+            raise error
 
 
 def setup(bot):
