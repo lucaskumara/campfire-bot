@@ -325,12 +325,6 @@ class Moderation(commands.Cog):
     async def kick_ban_errors(self, ctx, error):
         '''Error handler for kick and ban commands.'''
 
-        # Delete authors message
-        await ctx.message.delete()
-
-        # Create error embed
-        error_embed = discord.Embed(colour=discord.Colour.red())
-
         # If member is not specified
         if isinstance(error, commands.MissingRequiredArgument):
             await self.throw_error(ctx, 'Please make sure you specify a member.')
