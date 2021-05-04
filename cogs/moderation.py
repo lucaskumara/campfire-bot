@@ -224,6 +224,10 @@ class Moderation(commands.Cog):
         confirmation_prompt = await ctx.send(embed=confirmation_embed)
         confirmation_choice = await self.bot.wait_for('message', check=confirmation)
 
+        # Delete confirmation prompt and response
+        await confirmation_prompt.delete()
+        await confirmation_choice.delete()
+
         # Try to kick all members and store the ones that were kicked
         banned_members = members[:]
         for member in members:
