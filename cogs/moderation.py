@@ -294,10 +294,12 @@ class Moderation(commands.Cog):
         # Create error embed
         error_embed = discord.Embed(colour=discord.Colour.red())
 
+        # If member is not specified
         if isinstance(error, commands.MissingRequiredArgument):
             error_embed.description = 'Please make sure you specify a member.'
             await ctx.send(embed=error_embed, delete_after=self.error_message_delay)
 
+        # If specified member is not found
         elif isinstance(error, commands.MemberNotFound):
             error_embed.description = 'Please make sure you specify a valid server member'
             await ctx.send(embed=error_embed, delete_after=self.error_message_delay)
