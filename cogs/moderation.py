@@ -141,6 +141,11 @@ class Moderation(commands.Cog):
         await confirmation_prompt.delete()
         await confirmation_choice.delete()
 
+        # Continue only if confirmation was y or yes
+        if confirmation_choice.content[0] == 'n':
+            await ctx.message.delete()
+            return
+
         # Try to kick all members and store the ones that were kicked
         kicked_members = members[:]
         for member in members:
@@ -227,6 +232,11 @@ class Moderation(commands.Cog):
         # Delete confirmation prompt and response
         await confirmation_prompt.delete()
         await confirmation_choice.delete()
+
+        # Continue only if confirmation was y or yes
+        if confirmation_choice.content[0] == 'n':
+            await ctx.message.delete()
+            return
 
         # Try to kick all members and store the ones that were kicked
         banned_members = members[:]
