@@ -5,7 +5,7 @@ from discord.ext import commands
 from typing import Optional
 
 
-class BannedUser(commands.Converter):
+class BannedUserConverter(commands.Converter):
     '''Converter for finding banned users.'''
 
     async def convert(self, ctx, argument):
@@ -240,7 +240,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx, user: BannedUser, *, reason=None):
+    async def unban(self, ctx, user: BannedUserConverter, *, reason=None):
         '''Unbans a user from the server.'''
 
         # Ban user
