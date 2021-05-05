@@ -301,7 +301,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def clear(self, ctx, targets: commands.Greedy[commands.MemberConverter], amount=100):
+    async def clear(self, ctx, targets: commands.Greedy[commands.MemberConverter], amount: int=100):
         '''Clears a specified number of messages from the channel.'''
         await ctx.message.delete()
 
@@ -325,13 +325,31 @@ class Moderation(commands.Cog):
     async def kick_ban_errors(self, ctx, error):
         '''Error handler for kick and ban commands.'''
 
-        # If member is not specified
-        if isinstance(error, commands.MissingRequiredArgument):
-            await self.throw_error(ctx, 'Please make sure you specify a member.')
-
-        # If specified member is not found
-        elif isinstance(error, commands.MemberNotFound):
+        # If member is not specified or specified member is not found
+        if isinstance(error, (commands.MissingRequiredArgument, commands.MemberNotFound)):
             await self.throw_error(ctx, 'Please make sure you specify a valid server member.')
+
+        else:
+            raise error
+
+    @unban.error
+    async def unban_error(self, ctx, error):
+        '''Error handler for unban command.'''
+
+        # If user is not specified or specified user is not banned
+        if isinstance(error, (commands.MissingRequiredArgument, commands.UserNotFound)):
+            await self.throw_error(ctx, 'Please make sure you specify a valid banned user.')
+
+        else:
+            raise error
+
+    @clear.error
+    async def clear_error(self, ctx, error):
+        '''Error handler for clear command.'''
+
+        # If the specified amount is not an integer
+        if isinstance(error, commands.BadArgument):
+            await self.throw_error(ctx, 'Please make sure the amount you are specifying is a valid integer.')
 
         else:
             raise error
