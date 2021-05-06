@@ -31,7 +31,6 @@ class HelpCommand(commands.HelpCommand):
             timestamp=self.context.message.created_at
         )
 
-        # Modify embed
         help_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
         help_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 

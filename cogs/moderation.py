@@ -106,7 +106,6 @@ class Moderation(commands.Cog):
             timestamp=ctx.message.created_at
         )
 
-        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
         embed.set_footer(text=f'Kicked by {ctx.author}', icon_url=ctx.author.avatar_url)
@@ -164,7 +163,6 @@ class Moderation(commands.Cog):
             timestamp=ctx.message.created_at
         )
 
-        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
         embed.add_field(name='Kicked members', value=f'```{kicked_members_string}```', inline=False)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
@@ -188,7 +186,6 @@ class Moderation(commands.Cog):
             timestamp=ctx.message.created_at
         )
 
-        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
 
         # Create field based on existence of tempban
@@ -256,7 +253,6 @@ class Moderation(commands.Cog):
             timestamp=ctx.message.created_at
         )
 
-        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
         embed.add_field(name='Banned members', value=f'```{banned_members_string}```', inline=False)
 
