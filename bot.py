@@ -4,6 +4,7 @@ import os
 
 from discord.ext import commands
 from configparser import ConfigParser
+from helpcmd import HelpCommand
 
 # Load config
 config = ConfigParser()
@@ -16,7 +17,10 @@ logging.basicConfig(
 )
 
 # Intantiate bot
-bot = commands.Bot(command_prefix=commands.when_mentioned_or('+'))
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned_or('+'),
+    help_command = HelpCommand()
+)
 bot.logger = logging.getLogger('bot')
 
 for filename in os.listdir('./cogs'):
