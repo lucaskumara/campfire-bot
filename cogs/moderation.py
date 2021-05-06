@@ -287,7 +287,6 @@ class Moderation(commands.Cog):
             timestamp=ctx.message.created_at
         )
 
-        # Modify embed
         embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
         embed.add_field(name='Reason', value=f'```{reason}```', inline=False)
         embed.set_footer(text=f'Unbanned by {ctx.author}', icon_url=ctx.author.avatar_url)
