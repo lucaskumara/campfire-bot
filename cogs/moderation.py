@@ -90,11 +90,13 @@ class Moderation(commands.Cog):
 
         await ctx.send(embed=error_embed, delete_after=5)
 
-    @commands.command()
+    @commands.command(usage='kick <member> [reason]')
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, member: commands.MemberConverter, *, reason=None):
-        '''Kicks a member from the server.'''
+        '''
+        Kicks a specified member from the server. A reason can be specified for the audit log, but is optional.
+        '''
 
         # Kick member
         await ctx.guild.kick(member, reason=reason)
@@ -112,11 +114,13 @@ class Moderation(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command()
+    @commands.command(usage='masskick <members...> [reason]')
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def masskick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
-        '''Kicks multiple members from the server.'''
+        '''
+        Kicks multiple members from the server. A reason can be specified for the audit log, but is optional.
+        '''
 
         # If no members are specified
         if members == []:
@@ -170,11 +174,13 @@ class Moderation(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command()
+    @commands.command(usage='ban <member> [duration] [reason]')
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx, member: commands.MemberConverter, duration: Optional[DurationConverter]=None, *, reason=None):
-        '''Bans a member from the server.'''
+        '''
+        Bans a specified member from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.
+        '''
 
         # Ban member
         await ctx.guild.ban(member, reason=reason)
@@ -202,11 +208,13 @@ class Moderation(commands.Cog):
         # Handle the tempban process if the member was banned for a specific duration
         await self.handle_tempban(ctx, member, duration)
 
-    @commands.command()
+    @commands.command(usage='massban <members...> [duration] [reason]')
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def massban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[DurationConverter]=None, *, reason=None):
-        '''Bans multiple members from the server.'''
+        '''
+        Bans multiple members from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.
+        '''
 
         # If no members are specified
         if members == []:
@@ -270,11 +278,13 @@ class Moderation(commands.Cog):
         # Handle the tempban process if the members were banned for a specific duration
         await self.handle_tempban(ctx, member, duration)
 
-    @commands.command()
+    @commands.command(usage='unban <user> [reason]')
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx, user: BannedUserConverter, *, reason=None):
-        '''Unbans a user from the server.'''
+        '''
+        Unbans a banned user from the server. A reason can be specified for the audit log, but is optional.
+        '''
 
         # Ban user
         if discord.utils.get(await ctx.guild.bans(), user=user) is not None:
@@ -293,15 +303,21 @@ class Moderation(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command()
+    @commands.command(usage='clear [members...] [amount=100]')
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def clear(self, ctx, targets: commands.Greedy[commands.MemberConverter], amount: int=100):
-        '''Clears a specified number of messages from the channel.'''
+    async def clear(self, ctx, members: commands.Greedy[commands.MemberConverter], amount: int=100):
+        '''
+        Clears a specified number of messages from the channel. Optionally, multiple members can be specified to only delete messages created by those members as well as an amount of messages to search. 
+        
+        The amount of messages is not the number of messages to delete but rather the number of previous messages to look through.
+        '''
+
+        # Delete the authors message
         await ctx.message.delete()
 
         # Delete all messages within limit
-        if targets == []:
+        if members == []:
             deleted = await ctx.message.channel.purge(limit=amount)
 
         # Delete all messages by targets
@@ -309,7 +325,7 @@ class Moderation(commands.Cog):
 
             def author_is_target(msg):
                 '''Checks if a message is written by a target member.'''
-                return msg.author in targets
+                return msg.author in members
 
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
