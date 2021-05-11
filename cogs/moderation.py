@@ -79,9 +79,6 @@ class Moderation(commands.Cog):
     async def throw_error(self, ctx, message):
         '''Sends an error message.'''
 
-        # Delete authors message
-        await ctx.message.delete()
-
         # Create error embed
         error_embed = discord.Embed(
             description=message,
@@ -124,6 +121,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
+            await ctx.message.delete()
             await self.throw_error(ctx, 'Please specify at least one valid member to kick.')
             return
 
@@ -218,6 +216,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
+            await ctx.message.delete()
             await self.throw_error(ctx, 'Please specify at least one valid member to ban.')
             return
 
@@ -329,12 +328,13 @@ class Moderation(commands.Cog):
 
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
-        await ctx.send(f'{len(deleted)} messages deleted.')
-
     @kick.error
     @ban.error
     async def kick_ban_errors(self, ctx, error):
         '''Error handler for kick and ban commands.'''
+
+        # Delete authors message
+        await ctx.message.delete()
 
         # If member is not specified or specified member is not found
         if isinstance(error, (commands.MissingRequiredArgument, commands.MemberNotFound)):
@@ -347,6 +347,9 @@ class Moderation(commands.Cog):
     async def unban_error(self, ctx, error):
         '''Error handler for unban command.'''
 
+        # Delete authors message
+        await ctx.message.delete()
+
         # If user is not specified or specified user is not banned
         if isinstance(error, (commands.MissingRequiredArgument, commands.UserNotFound)):
             await self.throw_error(ctx, 'Please make sure you specify a valid banned user.')
@@ -357,6 +360,9 @@ class Moderation(commands.Cog):
     @clear.error
     async def clear_error(self, ctx, error):
         '''Error handler for clear command.'''
+
+        # Delete authors message
+        await ctx.message.delete()
 
         # If the specified amount is not an integer
         if isinstance(error, commands.BadArgument):
