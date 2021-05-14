@@ -76,7 +76,7 @@ class Moderation(commands.Cog):
             if discord.utils.get(await ctx.guild.bans(), user=member) is not None:
                 await ctx.guild.unban(member, reason='Tempban expired')
 
-    async def throw_error(self, ctx, message):
+    async def throw_error(self, destination, message):
         '''Sends an error message.'''
 
         # Create error embed
@@ -85,7 +85,7 @@ class Moderation(commands.Cog):
             colour=discord.Colour.red()
         )
 
-        await ctx.send(embed=error_embed, delete_after=5)
+        await destination.send(embed=error_embed, delete_after=5)
 
     @commands.command(usage='kick <member> [reason]')
     @commands.has_permissions(kick_members=True)
