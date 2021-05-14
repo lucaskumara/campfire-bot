@@ -307,8 +307,8 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(manage_messages=True)
     async def clear(self, ctx, members: commands.Greedy[commands.MemberConverter], amount: int=100):
         '''
-        Clears a specified number of messages from the channel. Optionally, multiple members can be specified to only delete messages created by those members as well as an amount of messages to search. 
-        
+        Clears a specified number of messages from the channel. Optionally, multiple members can be specified to only delete messages created by those members as well as an amount of messages to search.
+
         The amount of messages is not the number of messages to delete but rather the number of previous messages to look through.
         '''
 
@@ -327,6 +327,23 @@ class Moderation(commands.Cog):
                 return msg.author in members
 
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
+
+        # If no messages are deleted
+        if len(deleted) == 0:
+            await self.throw_error(ctx, 'There were no messages to delete.')
+            return
+
+        # Create embed
+        embed = discord.Embed(
+            description=f'`{len(deleted)}` messages deleted',
+            colour=discord.Colour.orange(),
+            timestamp=ctx.message.created_at
+        )
+
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
+        embed.set_footer(text=f'Cleared by {ctx.author}', icon_url=ctx.author.avatar_url)
+
+        await ctx.send(embed=embed)
 
     @kick.error
     @ban.error
