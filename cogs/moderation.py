@@ -100,7 +100,10 @@ class Moderation(commands.Cog):
         '''
 
         # Kick member
-        await ctx.guild.kick(member, reason=reason)
+        try:
+            await ctx.guild.kick(member, reason=reason)
+        except:
+            await self.throw_error(ctx.channel, 'Failed to kick that member.')
 
         # Create embed
         embed = discord.Embed(
@@ -185,7 +188,10 @@ class Moderation(commands.Cog):
         '''
 
         # Ban member
-        await ctx.guild.ban(member, reason=reason)
+        try:
+            await ctx.guild.ban(member, reason=reason)
+        except:
+            await self.throw_error(ctx.channel, 'Failed to ban that member.')
 
         # Create embed
         embed = discord.Embed(
