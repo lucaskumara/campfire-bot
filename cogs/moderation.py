@@ -95,9 +95,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, member: commands.MemberConverter, *, reason=None):
-        '''
-        Kicks a specified member from the server. A reason can be specified for the audit log, but is optional.
-        '''
+        '''Kicks a specified member from the server. A reason can be specified for the audit log, but is optional.'''
 
         # Kick member
         try:
@@ -122,9 +120,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def masskick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
-        '''
-        Kicks multiple members from the server. A reason can be specified for the audit log, but is optional.
-        '''
+        '''Kicks multiple members from the server. A reason can be specified for the audit log, but is optional.'''
 
         # If no members are specified
         if members == []:
@@ -183,9 +179,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx, member: commands.MemberConverter, duration: Optional[DurationConverter]=None, *, reason=None):
-        '''
-        Bans a specified member from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.
-        '''
+        '''Bans a specified member from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.'''
 
         # Ban member
         try:
@@ -220,9 +214,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def massban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[DurationConverter]=None, *, reason=None):
-        '''
-        Bans multiple members from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.
-        '''
+        '''Bans multiple members from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.'''
 
         # If no members are specified
         if members == []:
@@ -291,9 +283,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx, user: BannedUserConverter, *, reason=None):
-        '''
-        Unbans a banned user from the server. A reason can be specified for the audit log, but is optional.
-        '''
+        '''Unbans a banned user from the server. A reason can be specified for the audit log, but is optional.'''
 
         # Ban user
         if discord.utils.get(await ctx.guild.bans(), user=user) is not None:
