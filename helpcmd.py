@@ -34,24 +34,22 @@ class HelpCommand(commands.HelpCommand):
         help_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
         help_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 
-        # Create a field for each command
+        # Create a field for each command except admin commands
         for cog in mapping:
-            if cog is not None:
-
-                # Filter and sort commands to only show users commands they can use
-                filtered_commands = await self.filter_commands(cog.get_commands())
-                filtered_commands_names = [command.name for command in filtered_commands]
-                filtered_commands_names.sort()
-
-                # Create field only if cog contains at least one command to show
-                if filtered_commands != []:
-                    commands_string = '```\n' + '\n'.join(filtered_commands_names) + '```'
-                    help_embed.add_field(name=cog.qualified_name, value=commands_string)
+            if cog is not None and cog.qualified_name != 'Admin':
+                command_names = [command.name for command in cog.get_commands()]
+                commands_string = '```\n' + '\n'.join(command_names) + '```'
+                help_embed.add_field(name=cog.qualified_name, value=commands_string)
 
         await self.context.reply(embed=help_embed)
 
     async def send_command_help(self, command):
         '''Called when the help command is called with a command argument.'''
+
+        # Don't show admin commands
+        if command.cog.qualified_name == 'Admin':
+            await self.send_error_message(f'No command called "{command.name}" found.')
+            return
 
         # Create command embed
         command_embed = discord.Embed(
