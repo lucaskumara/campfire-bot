@@ -43,6 +43,31 @@ class HelpCommand(commands.HelpCommand):
 
         await self.context.reply(embed=help_embed)
 
+    async def send_cog_help(self, cog):
+        '''Called when the help command is called with a cog argument.'''
+
+        # Don't show admin commands
+        if cog.qualified_name == 'Admin':
+            await self.send_error_message(f'No command called "{cog.qualified_name}" found.')
+            return
+
+        # Create cog embed
+        cog_embed = discord.Embed(
+            title=cog.qualified_name,
+            description=cog.description,
+            colour=discord.Colour.orange(),
+            timestamp=self.context.message.created_at
+        )
+
+        cog_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
+        cog_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
+
+        # Get commands and show usages
+        command_names = [command.name for command in cog.get_commands()]
+        cog_embed.add_field(name='Commands', value=f'```\n' + '\n'.join(command_names) + '```', inline=False)
+
+        await self.context.reply(embed=cog_embed)
+
     async def send_command_help(self, command):
         '''Called when the help command is called with a command argument.'''
 
