@@ -89,7 +89,7 @@ class Moderation(commands.Cog):
             colour=discord.Colour.red()
         )
 
-        await destination.send(embed=error_embed, delete_after=5)
+        await destination.send(embed=error_embed, delete_after=8)
 
     @commands.command(usage='kick <member> [reason]')
     @commands.has_permissions(kick_members=True)
