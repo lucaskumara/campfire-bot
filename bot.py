@@ -16,9 +16,13 @@ logging.basicConfig(
     format='[%(asctime)s: %(name)s] %(levelname)s - %(message)s'
 )
 
+def command_prefix(bot, message):
+    '''Returns the bot command prefix.'''
+    return commands.when_mentioned_or('+')(bot, message)
+
 # Intantiate bot
 bot = commands.Bot(
-    command_prefix=commands.when_mentioned_or('+'),
+    command_prefix=command_prefix,
     help_command=HelpCommand()
 )
 bot.logger = logging.getLogger('bot')
