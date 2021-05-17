@@ -37,9 +37,11 @@ class HelpCommand(commands.HelpCommand):
         # Create a field for each command except admin commands
         for cog in mapping:
             if cog is not None and cog.qualified_name != 'Admin':
+                '''
                 command_names = [command.name for command in cog.get_commands()]
                 commands_string = '```\n' + '\n'.join(command_names) + '```'
-                help_embed.add_field(name=cog.qualified_name, value=commands_string)
+                '''
+                help_embed.add_field(name=cog.qualified_name, value='```\n' + f'help {cog.qualified_name}' + '```', inline=False)
 
         await self.context.reply(embed=help_embed)
 
