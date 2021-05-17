@@ -19,7 +19,7 @@ logging.basicConfig(
 # Intantiate bot
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or('+'),
-    help_command = HelpCommand()
+    help_command=HelpCommand()
 )
 bot.logger = logging.getLogger('bot')
 
