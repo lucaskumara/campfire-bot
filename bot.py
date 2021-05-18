@@ -23,7 +23,9 @@ def command_prefix(bot, message):
 # Intantiate bot
 bot = commands.Bot(
     command_prefix=command_prefix,
-    help_command=HelpCommand()
+    help_command=HelpCommand(),
+    status=discord.Status.idle,
+    activity=discord.Game('@Campfire help')
 )
 bot.logger = logging.getLogger('bot')
 
