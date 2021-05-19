@@ -62,10 +62,6 @@ class Moderation(commands.Cog):
             'y': 31536000
         }
 
-    async def on_command_error(ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send('This is a test')
-
     async def handle_tempban(self, ctx, member, duration):
         '''Unbans user once tempban expires.'''
 
