@@ -23,10 +23,13 @@ class HelpCommand(commands.HelpCommand):
 
     async def send_bot_help(self, mapping):
         '''Called when the help command is called with no arguments.'''
+
+        # Gets the valid command prefixes
+        command_prefixes = await self.context.bot.get_prefix(self.context.message)
         
         # Create help embed
         help_embed = discord.Embed(
-            description='Here is a complete list of all the bot commands.',
+            description=f'Here is a complete list of all the bot commands. \nThis servers command prefix is `{command_prefixes[-1]}`',
             colour=discord.Colour.orange(),
             timestamp=self.context.message.created_at
         )
