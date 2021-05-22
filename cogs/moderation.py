@@ -62,7 +62,7 @@ class Moderation(commands.Cog):
             'y': 31536000
         }
 
-    async def handle_tempban(self, ctx, member, duration):
+    async def handle_tempban(self, guild, member, duration):
         '''Unbans user once tempban expires.'''
 
         # If there is no duration, user hasn't been tempbanned
@@ -73,8 +73,8 @@ class Moderation(commands.Cog):
             await asyncio.sleep(amount * self.sleep_multiplier[unit])
 
             # Check if users are still banned. If so, unban
-            if discord.utils.get(await ctx.guild.bans(), user=member) is not None:
-                await ctx.guild.unban(member, reason='Tempban expired')
+            if discord.utils.get(await guild.bans(), user=member) is not None:
+                await guild.unban(member, reason='Tempban expired')
 
     async def throw_error(self, destination, message):
         '''Sends an error message.'''
@@ -204,7 +204,7 @@ class Moderation(commands.Cog):
         await ctx.reply(embed=embed)
 
         # Handle the tempban process if the member was banned for a specific duration
-        await self.handle_tempban(ctx, member, duration)
+        await self.handle_tempban(ctx.guild, member, duration)
 
     @commands.command(usage='massban <members...> [duration] [reason]')
     @commands.has_permissions(ban_members=True)
@@ -273,7 +273,7 @@ class Moderation(commands.Cog):
         await ctx.reply(embed=embed)
 
         # Handle the tempban process if the members were banned for a specific duration
-        await self.handle_tempban(ctx, member, duration)
+        await self.handle_tempban(ctx.guild, member, duration)
 
     @commands.command(usage='unban <user> [reason]')
     @commands.has_permissions(ban_members=True)
