@@ -41,7 +41,7 @@ class DurationConverter(commands.Converter):
         unit = argument[-1]
 
         # Check if the amount is a digit and the unit is in the specified list
-        if amount.isdigit() and unit in ['s', 'm', 'h', 'd', 'w', 'm', 'y']:
+        if amount.isdigit() and unit in ['m', 'h', 'd']:
             return (int(amount), unit)
 
         raise commands.BadArgument(message='Not a valid period of time')
@@ -53,13 +53,9 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.sleep_multiplier = {
-            's': 1,
             'm': 60,
             'h': 3600,
-            'd': 86400,
-            'w': 604800,
-            'm': 2592000,
-            'y': 31536000
+            'd': 86400
         }
 
     async def handle_tempban(self, guild, member, duration):
