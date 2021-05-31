@@ -52,6 +52,7 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.delete_error_delay = 8
         self.sleep_multiplier = {
             'm': 60,
             'h': 3600,
@@ -81,8 +82,8 @@ class Moderation(commands.Cog):
             colour=discord.Colour.red()
         )
 
-        await ctx.reply(embed=error_embed, delete_after=8)
-        await ctx.message.delete(delay=8)
+        await ctx.reply(embed=error_embed, delete_after=self.delete_error_delay)
+        await ctx.message.delete(delay=self.delete_error_delay)
 
     @commands.command(usage='kick <member> [reason]')
     @commands.has_permissions(kick_members=True)
