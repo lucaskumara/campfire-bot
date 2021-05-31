@@ -72,7 +72,7 @@ class Moderation(commands.Cog):
             if discord.utils.get(await guild.bans(), user=member) is not None:
                 await guild.unban(member, reason='Tempban expired')
 
-    async def throw_error(self, destination, message):
+    async def throw_error(self, ctx, message):
         '''Sends an error message.'''
 
         # Create error embed
@@ -81,7 +81,8 @@ class Moderation(commands.Cog):
             colour=discord.Colour.red()
         )
 
-        await destination.send(embed=error_embed, delete_after=8)
+        await ctx.reply(embed=error_embed, delete_after=8)
+        await ctx.message.delete(delay=8)
 
     @commands.command(usage='kick <member> [reason]')
     @commands.has_permissions(kick_members=True)
@@ -93,7 +94,7 @@ class Moderation(commands.Cog):
         try:
             await ctx.guild.kick(member, reason=reason)
         except:
-            await self.throw_error(ctx.channel, 'Failed to kick that member.')
+            await self.throw_error(ctx, 'Failed to kick that member.')
 
         # Create embed
         embed = discord.Embed(
@@ -116,8 +117,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
-            await ctx.message.delete()
-            await self.throw_error(ctx.channel, 'Please specify at least one valid member to kick.')
+            await self.throw_error(ctx, 'Please specify at least one valid member to kick.')
             return
 
         # Create confirmation embed and check
@@ -177,7 +177,7 @@ class Moderation(commands.Cog):
         try:
             await ctx.guild.ban(member, reason=reason)
         except:
-            await self.throw_error(ctx.channel, 'Failed to ban that member.')
+            await self.throw_error(ctx, 'Failed to ban that member.')
 
         # Create embed
         embed = discord.Embed(
@@ -210,8 +210,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
-            await ctx.message.delete()
-            await self.throw_error(ctx.channel, 'Please specify at least one valid member to ban.')
+            await self.throw_error(ctx, 'Please specify at least one valid member to ban.')
             return
 
         # Create confirmation embed and check
@@ -304,6 +303,11 @@ class Moderation(commands.Cog):
         The amount of messages is not the number of messages to delete but rather the number of previous messages to look through.
         '''
 
+        # Ensure that amount is greater than 0
+        if amount < 1 or amount > 1000:
+            await self.throw_error(ctx, 'Please specify an amount in the range 1-1000.')
+            return
+
         # Delete the authors message
         await ctx.message.delete()
 
@@ -320,11 +324,6 @@ class Moderation(commands.Cog):
 
             deleted = await ctx.message.channel.purge(limit=amount, check=author_is_target)
 
-        # If no messages are deleted
-        if len(deleted) == 0:
-            await self.throw_error(ctx.channel, 'There were no messages to delete.')
-            return
-
         # Create embed
         embed = discord.Embed(
             description=f'`{len(deleted)}` messages deleted',
@@ -338,35 +337,58 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @kick.error
-    @ban.error
-    async def kick_ban_errors(self, ctx, error):
-        '''Error handler for kick and ban commands.'''
-
-        # Delete authors message
-        await ctx.message.delete()
+    async def kick_errors(self, ctx, error):
+        '''Error handler for the kick command.'''
 
         # If member is not specified or specified member is not found
         if isinstance(error, (commands.MissingRequiredArgument, commands.MemberNotFound)):
-            await self.throw_error(ctx.channel, 'Please make sure you specify a valid server member.')
+            await self.throw_error(ctx, 'Please make sure you are specifying a valid server member to kick.')
 
-        # If author is missing permissions
+        # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await self.throw_error(ctx.channel, 'You don\'t have permssion to do that.')
+            await self.throw_error(ctx, 'You don\'t have permssion to use the kick command.')
+
+    @ban.error
+    async def ban_errors(self, ctx, error):
+        '''Error handler for the ban command.'''
+
+        # If member is not specified or specified member is not found
+        if isinstance(error, (commands.MissingRequiredArgument, commands.MemberNotFound)):
+            await self.throw_error(ctx, 'Please make sure you are specifying a valid server member to ban.')
+
+        # If the author is missing permissions
+        elif isinstance(error, commands.MissingPermissions):
+            await self.throw_error(ctx, 'You don\'t have permssion to use the ban command.')
 
         else:
             raise error
 
     @masskick.error
+    async def masskick_errors(self, ctx, error):
+        '''Error handler for the masskick command.'''
+        
+        # If the target member is not found
+        if isinstance(error, commands.MemberNotFound):
+            await self.throw_error(ctx, 'Please make sure you specify a valid server member to kick.')
+
+        # If the author is missing permissions
+        elif isinstance(error, commands.MissingPermissions):
+            await self.throw_error(ctx, 'You don\'t have permssion to use the masskick command.')
+
+        else:
+            raise error
+
     @massban.error
-    async def mass_kick_ban_errors(self, ctx, error):
-        '''Error handler for masskick and massban commands.'''
+    async def massban_errors(self, ctx, error):
+        '''Error handler for the massban command.'''
 
-        # Delete authors message
-        await ctx.message.delete()
+        # If the target member is not found
+        if isinstance(error, commands.MemberNotFound):
+            await self.throw_error(ctx, 'Please make sure you specify a valid server member to ban.')
 
-        # If author is missing permissions
-        if isinstance(error, commands.MissingPermissions):
-            await self.throw_error(ctx.channel, 'You don\'t have permssion to do that.')
+        # If the author is missing permissions
+        elif isinstance(error, commands.MissingPermissions):
+            await self.throw_error(ctx, 'You don\'t have permssion to use the massban command.')
 
         else:
             raise error
@@ -375,16 +397,13 @@ class Moderation(commands.Cog):
     async def unban_error(self, ctx, error):
         '''Error handler for unban command.'''
 
-        # Delete authors message
-        await ctx.message.delete()
-
         # If user is not specified or specified user is not banned
         if isinstance(error, (commands.MissingRequiredArgument, commands.UserNotFound)):
-            await self.throw_error(ctx.channel, 'Please make sure you specify a valid banned user.')
+            await self.throw_error(ctx, 'Please make sure you specify a valid banned user to unban.')
 
-        # If author is missing permissions
+        # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await self.throw_error(ctx.channel, 'You don\'t have permssion to do that.')
+            await self.throw_error(ctx, 'You don\'t have permssion to use the unban command.')
 
         else:
             raise error
@@ -393,16 +412,13 @@ class Moderation(commands.Cog):
     async def clear_error(self, ctx, error):
         '''Error handler for clear command.'''
 
-        # Delete authors message
-        await ctx.message.delete()
-
         # If the specified amount is not an integer
         if isinstance(error, commands.BadArgument):
-            await self.throw_error(ctx.channel, 'Please make sure the amount you are specifying is a valid integer.')
+            await self.throw_error(ctx, 'Please make sure the amount you are specifying is a valid integer.')
 
-        # If author is missing permissions
+        # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await self.throw_error(ctx.channel, 'You don\'t have permssion to do that.')
+            await self.throw_error(ctx, 'You don\'t have permssion to use the clear command.')
 
         else:
             raise error
