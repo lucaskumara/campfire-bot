@@ -77,6 +77,9 @@ class HelpCommand(commands.HelpCommand):
             await self.send_error_message(f'No command called "{command.name}" found.')
             return
 
+        # Gets the valid command prefixes
+        command_prefixes = await self.context.bot.get_prefix(self.context.message)
+
         # Create command embed
         command_embed = discord.Embed(
             title=command.name.capitalize(),
@@ -86,7 +89,7 @@ class HelpCommand(commands.HelpCommand):
         )
 
         command_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
-        command_embed.add_field(name='Usage', value=f'```\n{command.usage}```', inline=False)
+        command_embed.add_field(name='Usage', value=f'```\n{command_prefixes[-1]}{command.usage}```', inline=False)
         command_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 
         await self.context.reply(embed=command_embed)
