@@ -368,12 +368,7 @@ class Moderation(commands.Cog):
     async def masskick_errors(self, ctx, error):
         '''Error handler for the masskick command.'''
         
-        # If the target member is not found
-        if isinstance(error, commands.MemberNotFound):
-            await self.throw_error(ctx, 'Please make sure you specify a valid server member to kick.')
-
-        # If the author is missing permissions
-        elif isinstance(error, commands.MissingPermissions):
+        if isinstance(error, commands.MissingPermissions):
             await self.throw_error(ctx, 'You don\'t have permssion to use the masskick command.')
 
         else:
