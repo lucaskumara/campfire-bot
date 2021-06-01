@@ -39,7 +39,7 @@ class HelpCommand(commands.HelpCommand):
 
         # Create a field for each command except admin commands
         for cog in mapping:
-            if cog is not None and cog.qualified_name != 'Admin':
+            if cog is not None and cog.qualified_name != 'Admin' and cog.get_commands() != []:
                 help_embed.add_field(name=cog.qualified_name, value='```\n' + f'help {cog.qualified_name}' + '```', inline=False)
 
         await self.context.reply(embed=help_embed)
@@ -48,7 +48,7 @@ class HelpCommand(commands.HelpCommand):
         '''Called when the help command is called with a cog argument.'''
 
         # Don't show admin commands
-        if cog.qualified_name == 'Admin':
+        if cog.qualified_name == 'Admin' or cog.get_commands() == []:
             await self.send_error_message(f'No command called "{cog.qualified_name}" found.')
             return
 
