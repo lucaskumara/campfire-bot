@@ -385,7 +385,7 @@ class Moderation(commands.Cog):
             raise error
 
     @unban.error
-    async def unban_error(self, ctx, error):
+    async def unban_errors(self, ctx, error):
         '''Error handler for unban command.'''
 
         # If user is not specified or specified user is not banned
@@ -400,7 +400,7 @@ class Moderation(commands.Cog):
             raise error
 
     @clear.error
-    async def clear_error(self, ctx, error):
+    async def clear_errors(self, ctx, error):
         '''Error handler for clear command.'''
 
         # If the specified amount is not an integer
