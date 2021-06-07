@@ -12,16 +12,16 @@ class Config(commands.Cog):
         self.bot = bot
         self.delete_delay = 8
 
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
+    @commands.Cog.listener('on_guild_join')
+    async def create_prefixes_table(self, guild):
         '''Add server prefix to bot database.'''
         async with aiosqlite.connect('./campfire.db') as db:
             await db.execute('CREATE TABLE IF NOT EXISTS prefixes (guildid INTEGER, prefix TEXT)')
             await db.execute('INSERT INTO prefixes VALUES (?, ?)', (guild.id, '+'))
             await db.commit()
 
-    @commands.Cog.listener()
-    async def on_guild_remove(self, guild):
+    @commands.Cog.listener('on_guild_remove')
+    async def create_prefixes_table(self, guild):
         '''Remove server prefix from bot database.'''
         async with aiosqlite.connect('./campfire.db') as db:
             await db.execute('DELETE FROM prefixes WHERE guildid = ?', (guild.id, ))
