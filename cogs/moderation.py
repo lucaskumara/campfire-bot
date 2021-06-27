@@ -53,7 +53,6 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.delete_delay = 8
         self.sleep_multiplier = {
             'm': 60,
             'h': 3600,
@@ -84,7 +83,7 @@ class Moderation(commands.Cog):
         try:
             await ctx.guild.kick(member, reason=reason)
         except:
-            await throw_error(ctx, 'Failed to kick that member.', self.delete_delay)
+            await throw_error(ctx, 'Failed to kick that member.')
 
         # Create embed
         embed = discord.Embed(
@@ -107,7 +106,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
-            await throw_error(ctx, 'Please specify at least one valid member to kick.', self.delete_delay)
+            await throw_error(ctx, 'Please specify at least one valid member to kick.')
             return
 
         # Create confirmation embed and check
@@ -167,7 +166,7 @@ class Moderation(commands.Cog):
         try:
             await ctx.guild.ban(member, reason=reason)
         except:
-            await throw_error(ctx, 'Failed to ban that member.', self.delete_delay)
+            await throw_error(ctx, 'Failed to ban that member.')
 
         # Create embed
         embed = discord.Embed(
@@ -200,7 +199,7 @@ class Moderation(commands.Cog):
 
         # If no members are specified
         if members == []:
-            await throw_error(ctx, 'Please specify at least one valid member to ban.', self.delete_delay)
+            await throw_error(ctx, 'Please specify at least one valid member to ban.')
             return
 
         # Create confirmation embed and check
@@ -295,7 +294,7 @@ class Moderation(commands.Cog):
 
         # Ensure that amount is greater than 0
         if amount < 1 or amount > 1000:
-            await throw_error(ctx, 'Please specify an amount in the range 1-1000.', self.delete_delay)
+            await throw_error(ctx, 'Please specify an amount in the range 1-1000.')
             return
 
         # Delete the authors message
@@ -332,11 +331,11 @@ class Moderation(commands.Cog):
 
         # If member is not specified or specified member is not found
         if isinstance(error, (commands.MissingRequiredArgument, commands.MemberNotFound)):
-            await throw_error(ctx, 'Please make sure you are specifying a valid server member to kick.', self.delete_delay)
+            await throw_error(ctx, 'Please make sure you are specifying a valid server member to kick.')
 
         # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the kick command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the kick command.')
 
     @ban.error
     async def ban_errors(self, ctx, error):
@@ -344,11 +343,11 @@ class Moderation(commands.Cog):
 
         # If member is not specified or specified member is not found
         if isinstance(error, (commands.MissingRequiredArgument, commands.MemberNotFound)):
-            await throw_error(ctx, 'Please make sure you are specifying a valid server member to ban.', self.delete_delay)
+            await throw_error(ctx, 'Please make sure you are specifying a valid server member to ban.')
 
         # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the ban command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the ban command.')
 
         else:
             raise error
@@ -358,7 +357,7 @@ class Moderation(commands.Cog):
         '''Error handler for the masskick command.'''
         
         if isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the masskick command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the masskick command.')
 
         else:
             raise error
@@ -368,7 +367,7 @@ class Moderation(commands.Cog):
         '''Error handler for the massban command.'''
 
         if isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the massban command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the massban command.')
 
         else:
             raise error
@@ -379,11 +378,11 @@ class Moderation(commands.Cog):
 
         # If user is not specified or specified user is not banned
         if isinstance(error, (commands.MissingRequiredArgument, commands.UserNotFound)):
-            await throw_error(ctx, 'Please make sure you specify a valid banned user to unban.', self.delete_delay)
+            await throw_error(ctx, 'Please make sure you specify a valid banned user to unban.')
 
         # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the unban command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the unban command.')
 
         else:
             raise error
@@ -394,11 +393,11 @@ class Moderation(commands.Cog):
 
         # If the specified amount is not an integer
         if isinstance(error, commands.BadArgument):
-            await throw_error(ctx, 'Please make sure the amount you are specifying is a valid integer.', self.delete_delay)
+            await throw_error(ctx, 'Please make sure the amount you are specifying is a valid integer.')
 
         # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the clear command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the clear command.')
 
         else:
             raise error
