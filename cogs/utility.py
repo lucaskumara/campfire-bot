@@ -26,6 +26,7 @@ class Utility(commands.Cog):
             await db.commit()
 
     @commands.group(invoke_without_command=True, usage='tag <name>')
+    @commands.guild_only()
     async def tag(self, ctx, *, name):
         '''Displays a server tag in the chat. This command also has a number of subcommands that can be invoked to further manipulate the guild tags.'''
 
@@ -42,6 +43,7 @@ class Utility(commands.Cog):
         await ctx.reply(row[0])
 
     @tag.command(usage='tag create <name>')
+    @commands.guild_only()
     async def create(self, ctx, *, name):
         '''Creates a tag for global use in the server.'''
 
@@ -87,6 +89,7 @@ class Utility(commands.Cog):
         await ctx.reply(embed=confirmation)
 
     @tag.command(usage='tag remove <name>', aliases=['delete'])
+    @commands.guild_only()
     async def remove(self, ctx, *, name):
         '''Remove an existing tag you own from the server. Members with the manage messages permission may remove tags owned by others.'''
 
@@ -122,6 +125,7 @@ class Utility(commands.Cog):
         await ctx.reply(embed=remove_embed)
 
     @tag.command(usage='tag edit <name> <text>')
+    @commands.guild_only()
     async def edit(self, ctx, *, name):
         '''Updates the text of an existing tag.'''
 
@@ -176,6 +180,7 @@ class Utility(commands.Cog):
         await ctx.reply(embed=confirmation)
 
     @tag.command(usage='tag info <name>')
+    @commands.guild_only()
     async def info(self, ctx, *, name):
         '''Shows information about a tag.'''
 
@@ -206,6 +211,7 @@ class Utility(commands.Cog):
         await ctx.reply(embed=info_embed)
 
     @tag.command(name='list', usage='tag list [member]')
+    @commands.guild_only()
     async def _list(self, ctx, member: commands.MemberConverter=None):
         '''Lists all server tags. A member can be specified to see specifically which tags they own.'''
 
