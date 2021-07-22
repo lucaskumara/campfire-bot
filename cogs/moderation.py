@@ -76,6 +76,7 @@ class Moderation(commands.Cog):
     @commands.command(usage='kick <member> [reason]')
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
+    @commands.guild_only()
     async def kick(self, ctx, member: commands.MemberConverter, *, reason=None):
         '''Kicks a specified member from the server. A reason can be specified for the audit log, but is optional.'''
 
@@ -101,6 +102,7 @@ class Moderation(commands.Cog):
     @commands.command(usage='masskick <members...> [reason]')
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
+    @commands.guild_only()
     async def masskick(self, ctx, members: commands.Greedy[commands.MemberConverter], *, reason=None):
         '''Kicks multiple members from the server. A reason can be specified for the audit log, but is optional.'''
 
@@ -159,6 +161,7 @@ class Moderation(commands.Cog):
     @commands.command(usage='ban <member> [duration] [reason]')
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
+    @commands.guild_only()
     async def ban(self, ctx, member: commands.MemberConverter, duration: Optional[DurationConverter]=None, *, reason=None):
         '''Bans a specified member from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.'''
 
@@ -194,6 +197,7 @@ class Moderation(commands.Cog):
     @commands.command(usage='massban <members...> [duration] [reason]')
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
+    @commands.guild_only()
     async def massban(self, ctx, members: commands.Greedy[commands.MemberConverter], duration: Optional[DurationConverter]=None, *, reason=None):
         '''Bans multiple members from the server. Optionally, a duration can be specified to make the ban temporary as well as a reason can be specified for the audit log.'''
 
@@ -262,6 +266,7 @@ class Moderation(commands.Cog):
     @commands.command(usage='unban <user> [reason]')
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
+    @commands.guild_only()
     async def unban(self, ctx, user: BannedUserConverter, *, reason=None):
         '''Unbans a banned user from the server. A reason can be specified for the audit log, but is optional.'''
 
@@ -285,6 +290,7 @@ class Moderation(commands.Cog):
     @commands.command(usage='clear [members...] [amount=100]')
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
+    @commands.guild_only()
     async def clear(self, ctx, members: commands.Greedy[commands.MemberConverter], amount: int=100):
         '''
         Clears a specified number of messages from the channel. Optionally, multiple members can be specified to only delete messages created by those members as well as an amount of messages to search.
@@ -337,6 +343,13 @@ class Moderation(commands.Cog):
         elif isinstance(error, commands.MissingPermissions):
             await throw_error(ctx, 'You don\'t have permssion to use the kick command.')
 
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the kick command in a direct message.')
+
+        else:
+            raise error
+
     @ban.error
     async def ban_errors(self, ctx, error):
         '''Error handler for the ban command.'''
@@ -349,6 +362,10 @@ class Moderation(commands.Cog):
         elif isinstance(error, commands.MissingPermissions):
             await throw_error(ctx, 'You don\'t have permssion to use the ban command.')
 
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the ban command in a direct message.')
+
         else:
             raise error
 
@@ -356,8 +373,13 @@ class Moderation(commands.Cog):
     async def masskick_errors(self, ctx, error):
         '''Error handler for the masskick command.'''
         
+        # If the author is missing permissions
         if isinstance(error, commands.MissingPermissions):
             await throw_error(ctx, 'You don\'t have permssion to use the masskick command.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the masskick command in a direct message.')
 
         else:
             raise error
@@ -366,8 +388,13 @@ class Moderation(commands.Cog):
     async def massban_errors(self, ctx, error):
         '''Error handler for the massban command.'''
 
+        # If the author is missing permissions
         if isinstance(error, commands.MissingPermissions):
             await throw_error(ctx, 'You don\'t have permssion to use the massban command.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the massban command in a direct message.')
 
         else:
             raise error
@@ -384,6 +411,10 @@ class Moderation(commands.Cog):
         elif isinstance(error, commands.MissingPermissions):
             await throw_error(ctx, 'You don\'t have permssion to use the unban command.')
 
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the unban command in a direct message.')
+
         else:
             raise error
 
@@ -398,6 +429,10 @@ class Moderation(commands.Cog):
         # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
             await throw_error(ctx, 'You don\'t have permssion to use the clear command.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the clear command in a direct message.')
 
         else:
             raise error
