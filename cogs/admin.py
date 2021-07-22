@@ -21,6 +21,9 @@ class Admin(commands.Cog):
         if isinstance(error, commands.CommandNotFound):
             pass
 
+        else:
+            raise error
+
     @commands.is_owner()
     @commands.command(hidden=True)
     async def load(self, ctx, extension):
