@@ -10,8 +10,9 @@ class HelpCommand(commands.HelpCommand):
     async def send_error_message(self, error_message):
         '''Send formatted error message.'''
 
-        # Delete authors message
-        await self.context.message.delete()
+        # Delete authors message if error happened in a guild
+        if self.context.message.guild is not None:
+            await self.context.message.delete()
 
         # Create error embed
         error_embed = discord.Embed(
@@ -26,15 +27,22 @@ class HelpCommand(commands.HelpCommand):
 
         # Gets the valid command prefixes
         command_prefixes = await self.context.bot.get_prefix(self.context.message)
-        command_prefix = command_prefixes[-1]
         
         # Create help embed
         help_embed = discord.Embed(
-            description=f'Here is a complete list of all the bot commands. \nThis servers command prefix is `{command_prefixes[-1]}`',
             colour=discord.Colour.orange(),
             timestamp=self.context.message.created_at
         )
 
+        # Shows correct prefix for both dms and guilds
+        if len(command_prefixes) == 2: # <@bot id> and <@!bot id>
+            command_prefix = '@Campfire '
+            help_embed.description = f'Here is a complete list of all the bot commands. \nThe command prefix for the bot is `@Campfire`'
+        else:
+            command_prefix = command_prefixes[-1]
+            help_embed.description = f'Here is a complete list of all the bot commands. \nThe command prefix for the bot is `{command_prefix}`'            
+
+        # Set embed author and footer
         help_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
         help_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 
@@ -42,7 +50,7 @@ class HelpCommand(commands.HelpCommand):
         for cog in mapping:
             if cog is not None and cog.qualified_name != 'Admin' and cog.get_commands() != []:
                 field_value = f'```\n{command_prefix}help {cog.qualified_name}```'
-                help_embed.add_field(name=cog.qualified_name, value=field_value)
+                help_embed.add_field(name=cog.qualified_name, value=field_value, inline=False)
 
         await self.context.reply(embed=help_embed)
 
@@ -82,7 +90,12 @@ class HelpCommand(commands.HelpCommand):
 
         # Gets the valid command prefixes
         command_prefixes = await self.context.bot.get_prefix(self.context.message)
-        command_prefix = command_prefixes[-1]
+        
+        # Shows correct prefix for both dms and guilds
+        if len(command_prefixes) == 2: # <@bot id> and <@!bot id>
+            command_prefix = '@Campfire '
+        else:
+            command_prefix = command_prefixes[-1]
 
         # Create usage string
         usage_string = f'```\n{command_prefix}{group.usage}```'
@@ -116,8 +129,13 @@ class HelpCommand(commands.HelpCommand):
 
         # Gets the valid command prefixes
         command_prefixes = await self.context.bot.get_prefix(self.context.message)
-        command_prefix = command_prefixes[-1]
-
+        
+        # Shows correct prefix for both dms and guilds
+        if len(command_prefixes) == 2: # <@bot id> and <@!bot id>
+            command_prefix = '@Campfire '
+        else:
+            command_prefix = command_prefixes[-1]
+            
         # Create command embed
         command_embed = discord.Embed(
             title=command.name.capitalize(),
