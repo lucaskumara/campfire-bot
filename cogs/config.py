@@ -29,6 +29,7 @@ class Config(commands.Cog):
 
     @commands.command(usage='prefix <new prefix>')
     @commands.has_permissions(administrator=True)
+    @commands.guild_only()
     async def prefix(self, ctx, *, new_prefix):
         '''Sets the bot prefix within a server.'''
 
@@ -55,11 +56,18 @@ class Config(commands.Cog):
 
         # If member is not specified or specified member is not found
         if isinstance(error, commands.MissingRequiredArgument):
-            await throw_error(ctx, 'Please make sure you are specifying a server prefix to set.', self.delete_delay)
+            await throw_error(ctx, 'Please make sure you are specifying a server prefix to set.')
 
         # If the author is missing permissions
         elif isinstance(error, commands.MissingPermissions):
-            await throw_error(ctx, 'You don\'t have permssion to use the prefix command.', self.delete_delay)
+            await throw_error(ctx, 'You don\'t have permssion to use the prefix command.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the prefix command in a direct message.')
+
+        else:
+            raise error
 
 
 def setup(bot):
