@@ -20,6 +20,10 @@ logging.basicConfig(
 async def command_prefix(bot, message):
     '''Returns the bot command prefix.'''
 
+    # If command is used in a dm, only allow mentions as a prefix
+    if message.guild is None:
+        return commands.when_mentioned(bot, message)
+
     # Pull guild prefix from the database
     async with aiosqlite.connect('./campfire.db') as db:
         async with db.execute('SELECT prefix FROM prefixes WHERE guildid = ?', (message.guild.id, )) as cursor:
