@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+
 class HelpCommand(commands.HelpCommand):
     '''A custom help command to be used by the bot.'''
 
@@ -27,7 +28,7 @@ class HelpCommand(commands.HelpCommand):
 
         # Gets the valid command prefixes
         command_prefixes = await self.context.bot.get_prefix(self.context.message)
-        
+
         # Create help embed
         help_embed = discord.Embed(
             colour=discord.Colour.orange(),
@@ -35,12 +36,12 @@ class HelpCommand(commands.HelpCommand):
         )
 
         # Shows correct prefix for both dms and guilds
-        if len(command_prefixes) == 2: # <@bot id> and <@!bot id>
+        if len(command_prefixes) == 2:  # <@bot id> and <@!bot id>
             command_prefix = '@Campfire '
             help_embed.description = f'Here is a complete list of all the bot commands. \nThe command prefix for the bot is `@Campfire`'
         else:
             command_prefix = command_prefixes[-1]
-            help_embed.description = f'Here is a complete list of all the bot commands. \nThe command prefix for the bot is `{command_prefix}`'            
+            help_embed.description = f'Here is a complete list of all the bot commands. \nThe command prefix for the bot is `{command_prefix}`'
 
         # Set embed author and footer
         help_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
@@ -90,9 +91,9 @@ class HelpCommand(commands.HelpCommand):
 
         # Gets the valid command prefixes
         command_prefixes = await self.context.bot.get_prefix(self.context.message)
-        
+
         # Shows correct prefix for both dms and guilds
-        if len(command_prefixes) == 2: # <@bot id> and <@!bot id>
+        if len(command_prefixes) == 2:  # <@bot id> and <@!bot id>
             command_prefix = '@Campfire '
         else:
             command_prefix = command_prefixes[-1]
@@ -129,13 +130,13 @@ class HelpCommand(commands.HelpCommand):
 
         # Gets the valid command prefixes
         command_prefixes = await self.context.bot.get_prefix(self.context.message)
-        
+
         # Shows correct prefix for both dms and guilds
-        if len(command_prefixes) == 2: # <@bot id> and <@!bot id>
+        if len(command_prefixes) == 2:  # <@bot id> and <@!bot id>
             command_prefix = '@Campfire '
         else:
             command_prefix = command_prefixes[-1]
-            
+
         # Create command embed
         command_embed = discord.Embed(
             title=command.name.capitalize(),
@@ -149,4 +150,3 @@ class HelpCommand(commands.HelpCommand):
         command_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 
         await self.context.reply(embed=command_embed)
-    
