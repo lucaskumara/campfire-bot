@@ -64,7 +64,15 @@ class HelpCommand(commands.HelpCommand):
             return
 
         # Get command names
-        command_names = [command.name for command in cog.get_commands()]
+        command_names = []
+        for command in cog.get_commands():
+            command_names.append(command.name)
+
+            # If command is a group, add subcommands
+            if hasattr(command, 'commands'):
+                for i, subcommand in enumerate(command.commands):
+                    command_names.append(f'{command.name} {subcommand.name}')
+
         commands_string = '```\n' + '\n'.join(command_names) + '```'
 
         # Create cog embed
@@ -98,14 +106,7 @@ class HelpCommand(commands.HelpCommand):
         else:
             command_prefix = command_prefixes[-1]
 
-        # Create usage string
-        usage_string = f'```\n{command_prefix}{group.usage}```'
-
-        # Get subcommand names
-        subcommand_names = [f'{group.name} {command.name}' for i, command in enumerate(group.commands)]
-        subcommands_string = '```\n' + '\n'.join(subcommand_names) + '```'
-
-        # Create group embed
+        # Create command embed
         group_embed = discord.Embed(
             title=group.name.capitalize(),
             description=group.help,
@@ -114,8 +115,7 @@ class HelpCommand(commands.HelpCommand):
         )
 
         group_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
-        group_embed.add_field(name='Usage', value=usage_string, inline=False)
-        group_embed.add_field(name='Subcommands', value=subcommands_string, inline=False)
+        group_embed.add_field(name='Usage', value=f'```\n{command_prefix}{group.usage}```', inline=False)
         group_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 
         await self.context.reply(embed=group_embed)
