@@ -401,7 +401,7 @@ class Moderation(commands.Cog):
 
     @unban.error
     async def unban_errors(self, ctx, error):
-        '''Error handler for unban command.'''
+        '''Error handler for the unban command.'''
 
         # If user is not specified or specified user is not banned
         if isinstance(error, (commands.MissingRequiredArgument, commands.UserNotFound)):
@@ -420,7 +420,7 @@ class Moderation(commands.Cog):
 
     @clear.error
     async def clear_errors(self, ctx, error):
-        '''Error handler for clear command.'''
+        '''Error handler for the clear command.'''
 
         # If the specified amount is not an integer
         if isinstance(error, commands.BadArgument):
