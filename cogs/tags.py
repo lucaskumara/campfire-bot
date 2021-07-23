@@ -5,7 +5,7 @@ from discord.ext import commands
 from helpers import throw_error
 
 
-class Utility(commands.Cog):
+class Tags(commands.Cog):
     '''Cog containing commands for additional server utility.'''
 
     def __init__(self, bot):
@@ -28,7 +28,7 @@ class Utility(commands.Cog):
     @commands.group(invoke_without_command=True, usage='tag <name>')
     @commands.guild_only()
     async def tag(self, ctx, *, name):
-        '''Displays a server tag in the chat. This command also has a number of subcommands that can be invoked to further manipulate the guild tags.'''
+        '''Displays a server tag in the chat.'''
 
         # Pull tag from database
         async with aiosqlite.connect('./campfire.db') as db:
@@ -270,4 +270,4 @@ class Utility(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Utility(bot))
+    bot.add_cog(Tags(bot))
