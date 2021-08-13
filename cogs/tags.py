@@ -268,6 +268,96 @@ class Tags(commands.Cog):
 
             await ctx.reply(embed=list_embed)
 
+    @tag.error
+    async def tag_errors(self, ctx, error):
+        '''Error handler for the tag command.'''
+
+        # If a tag is not specified
+        if isinstance(error, commands.MissingRequiredArgument):
+            await throw_error(ctx, f'Please make sure you specify a valid tag to view.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use this command in a direct message.')
+
+        else:
+            raise error
+
+    @create.error
+    async def create_errors(self, ctx, error):
+        '''Error handler for the create subcommand.'''
+
+        # If a tag is not specified
+        if isinstance(error, commands.MissingRequiredArgument):
+            await throw_error(ctx, f'Please make sure you specify a unique name for the tag.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use this command in a direct message.')
+
+        else:
+            raise error
+
+    @remove.error
+    async def remove_errors(self, ctx, error):
+        '''Error handler for the remove subcommand.'''
+
+        # If a tag is not specified
+        if isinstance(error, commands.MissingRequiredArgument):
+            await throw_error(ctx, f'Please make sure you specify a valid tag to remove.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use this command in a direct message.')
+
+        else:
+            raise error
+
+    @edit.error
+    async def edit_errors(self, ctx, error):
+        '''Error handler for the edit subcommand.'''
+
+        # If a tag is not specified
+        if isinstance(error, commands.MissingRequiredArgument):
+            await throw_error(ctx, f'Please make sure you specify a valid tag to edit.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use this command in a direct message.')
+
+        else:
+            raise error
+
+    @info.error
+    async def info_errors(self, ctx, error):
+        '''Error handler for the info subcommand.'''
+
+        # If a tag is not specified
+        if isinstance(error, commands.MissingRequiredArgument):
+            await throw_error(ctx, f'Please make sure you specify a valid tag to view its information.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use this command in a direct message.')
+
+        else:
+            raise error
+
+    @_list.error
+    async def list_errors(self, ctx, error):
+        '''Error handler for the list subcommand.'''
+
+        # If the specified member is not found
+        if isinstance(error, commands.MemberNotFound):
+            await throw_error(ctx, 'Please make sure you are specifying a valid server member to see their tags.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use this command in a direct message.')
+
+        else:
+            raise error
+
 
 def setup(bot):
     bot.add_cog(Tags(bot))
