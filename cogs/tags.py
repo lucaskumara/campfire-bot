@@ -215,6 +215,12 @@ class Tags(commands.Cog):
     async def _list(self, ctx, member: commands.MemberConverter=None):
         '''Lists all server tags. A member can be specified to see specifically which tags they own.'''
 
+        # Create embed
+        list_embed = discord.Embed(
+            colour=discord.Colour.orange(),
+            timestamp=ctx.message.created_at
+        )
+
         # If there is no member specified
         if member is None:
 
@@ -223,24 +229,13 @@ class Tags(commands.Cog):
                 async with db.execute('SELECT name FROM tags WHERE guildid = ?', (ctx.guild.id, )) as cursor:
                     rows = await cursor.fetchall()
 
-            tag_names = [row[0] for row in rows]
-
             # If there are no server tags
-            if len(tag_names) == 0:
+            if len(rows) == 0:
                 await throw_error(ctx, 'This server does not yet have any tags.')
                 return
 
-            list_embed = discord.Embed(
-                description='Here is a list of all server tags.',
-                colour=discord.Colour.orange(),
-                timestamp=ctx.message.created_at
-            )
-
-            list_embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-            list_embed.add_field(name='Tags', value=f'```{", ".join(tag_names)}```')
-            list_embed.set_footer(text=f'Requested by {ctx.author}', icon_url=ctx.author.avatar_url)
-
-            await ctx.reply(embed=list_embed)
+            # Set embed description
+            list_embed.description = 'Here is a list of all server tags.'
 
         else:
 
@@ -249,24 +244,24 @@ class Tags(commands.Cog):
                 async with db.execute('SELECT name FROM tags WHERE guildid = ? AND authorid = ?', (ctx.guild.id, member.id)) as cursor:
                     rows = await cursor.fetchall()
 
-            tag_names = [row[0] for row in rows]
-
             # If member has no owned tags
-            if len(tag_names) == 0:
+            if len(rows) == 0:
                 await throw_error(ctx, f'{member} has not made any tags yet.')
                 return
 
-            list_embed = discord.Embed(
-                description=f'Here is a list of all server tags made by `{member}`',
-                colour=discord.Colour.orange(),
-                timestamp=ctx.message.created_at
-            )
+            # Set embed description
+            list_embed.description = f'Here is a list of all server tags made by `{member}`'
 
-            list_embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-            list_embed.add_field(name='Tags', value=f'```{", ".join(tag_names)}```')
-            list_embed.set_footer(text=f'Requested by {ctx.author}', icon_url=ctx.author.avatar_url)
+        # Create tag string
+        tag_names = [row[0] for row in rows]
+        tag_string = ', '.join(tag_names)
 
-            await ctx.reply(embed=list_embed)
+        # Modify embed
+        list_embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
+        list_embed.add_field(name='Tags', value=f'```{tag_string}```')
+        list_embed.set_footer(text=f'Requested by {ctx.author}', icon_url=ctx.author.avatar_url)
+
+        await ctx.reply(embed=list_embed)
 
     @tag.error
     async def tag_errors(self, ctx, error):
