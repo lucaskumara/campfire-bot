@@ -1,5 +1,8 @@
 import discord
+import copy
+
 from discord.ext import commands
+from helpers import Pages
 
 
 class HelpCommand(commands.HelpCommand):
@@ -47,13 +50,41 @@ class HelpCommand(commands.HelpCommand):
         help_embed.set_author(name='Campfire', icon_url=self.context.bot.user.avatar_url)
         help_embed.set_footer(text=f'Requested by {self.context.author}', icon_url=self.context.author.avatar_url)
 
-        # Create a field for each command except admin commands
-        for cog in mapping:
-            if cog is not None and cog.qualified_name != 'Admin' and cog.get_commands() != []:
-                field_value = f'```\n{command_prefix}help {cog.qualified_name}```'
-                help_embed.add_field(name=cog.qualified_name, value=field_value, inline=False)
+        # Create pages list and counter
+        pages = []
+        counter = 0
 
-        await self.context.reply(embed=help_embed)
+        # Filter the cogs
+        valid_cogs = [cog for cog in mapping if cog is not None and cog.qualified_name != 'Admin' and cog.get_commands() != []]
+
+        # Create each page and add them to pages list
+        for cog in valid_cogs:
+
+            # Add field to help embed
+            field_value = f'```\n{command_prefix}help {cog.qualified_name}```'
+            help_embed.add_field(name=cog.qualified_name, value=field_value, inline=False)
+
+            # Increment counter
+            counter += 1
+
+            # 3 cogs per page
+            if counter == 1:
+                counter = 0
+                pages.append(copy.deepcopy(help_embed))
+                help_embed.clear_fields()
+
+        # Create last page if there is one
+        if counter != 0:
+            pages.append(help_embed)
+
+        # Add page counts to pages
+        page_count = len(pages)
+        for i in range(page_count):
+            pages[i].title = f'Page {i + 1}/{page_count}'
+
+        # Use Pages to paginate the message
+        paginator = Pages(self.context.bot, pages)
+        await paginator.start(self.context)
 
     async def send_cog_help(self, cog):
         '''Called when the help command is called with a cog argument.'''
