@@ -68,7 +68,7 @@ class HelpCommand(commands.HelpCommand):
             counter += 1
 
             # 3 cogs per page
-            if counter == 1:
+            if counter == 3:
                 counter = 0
                 pages.append(copy.deepcopy(help_embed))
                 help_embed.clear_fields()
