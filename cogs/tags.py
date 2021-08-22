@@ -1,8 +1,9 @@
 import discord
 import aiosqlite
+import copy
 
 from discord.ext import commands
-from helpers import throw_error
+from helpers import throw_error, Pages
 
 
 class Tags(commands.Cog):
@@ -46,6 +47,11 @@ class Tags(commands.Cog):
     @commands.guild_only()
     async def create(self, ctx, *, name):
         '''Creates a tag for global use in the server.'''
+
+        # Limit tag names to 54 characters
+        if len(name) > 54:
+            await throw_error(ctx, 'Tag names cannot exceed 54 characters.')
+            return
 
         # Check if tag already exists
         async with aiosqlite.connect('./campfire.db') as db:
@@ -252,16 +258,45 @@ class Tags(commands.Cog):
             # Set embed description
             list_embed.description = f'Here is a list of all server tags made by `{member}`'
 
-        # Create tag string
-        tag_names = [row[0] for row in rows]
-        tag_string = ', '.join(tag_names)
-
         # Modify embed
         list_embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
-        list_embed.add_field(name='Tags', value=f'```{tag_string}```')
         list_embed.set_footer(text=f'Requested by {ctx.author}', icon_url=ctx.author.avatar_url)
 
-        await ctx.reply(embed=list_embed)
+        # Create pages
+        pages = []
+        tag_names = [row[0] for row in rows]
+        tag_count = len(tag_names)
+        start = 0
+
+        while start <= tag_count:
+
+            # Pointer 10 indexes ahead of start
+            end = start + 10
+
+            # If end exceeds tag count, set to the actual tag count
+            if end > tag_count:
+                end = tag_count
+
+            # Get up to 10 tags and make a string
+            page_tags = tag_names[start:end]
+            tag_string = '\n'.join([f'• {tag}' for tag in page_tags])
+
+            # Add string to field and add the embed to pages
+            list_embed.add_field(name='Tags', value=f'```{tag_string}```')
+            pages.append(copy.deepcopy(list_embed))
+
+            # Clear fields and increment start
+            list_embed.clear_fields()
+            start += 10
+
+        # Add page counts to pages
+        page_count = len(pages)
+        for i in range(page_count):
+            pages[i].title = f'Page {i + 1}/{page_count}'
+
+        # Use Pages to paginate the message
+        paginator = Pages(self.bot, pages)
+        await paginator.start(ctx)
 
     @tag.error
     async def tag_errors(self, ctx, error):
