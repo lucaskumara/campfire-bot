@@ -7,7 +7,7 @@ from helpers import throw_error, Pages
 
 
 class Tags(commands.Cog):
-    '''Cog containing commands for additional server utility.'''
+    '''Cog containing commands for a tag system.'''
 
     def __init__(self, bot):
         self.bot = bot
