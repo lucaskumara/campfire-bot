@@ -9,6 +9,21 @@ class Admin(commands.Cog):
         self.bot = bot
         self.delete_delay = 5
 
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        '''Global event handler. Not specific to certain commands.'''
+
+        # Let the commands own error handler handle its errors
+        if ctx.command is not None and ctx.command.has_error_handler():
+            return
+
+        # If the prefix failed to find a command to run
+        if isinstance(error, commands.CommandNotFound):
+            pass
+
+        else:
+            raise error
+
     @commands.is_owner()
     @commands.command(hidden=True)
     async def load(self, ctx, extension):

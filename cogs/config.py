@@ -1,0 +1,74 @@
+import discord
+import aiosqlite
+
+from discord.ext import commands
+from helpers import throw_error
+
+
+class Config(commands.Cog):
+    '''Cog containing commands for server configuration.'''
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.delete_delay = 8
+
+    @commands.Cog.listener('on_guild_join')
+    async def add_guild_prefix(self, guild):
+        '''Add server prefix to bot database.'''
+        async with aiosqlite.connect('./campfire.db') as db:
+            await db.execute('CREATE TABLE IF NOT EXISTS prefixes (guildid INTEGER, prefix TEXT)')
+            await db.execute('INSERT INTO prefixes VALUES (?, ?)', (guild.id, '+'))
+            await db.commit()
+
+    @commands.Cog.listener('on_guild_remove')
+    async def remove_guild_prefix(self, guild):
+        '''Remove server prefix from bot database.'''
+        async with aiosqlite.connect('./campfire.db') as db:
+            await db.execute('DELETE FROM prefixes WHERE guildid = ?', (guild.id, ))
+            await db.commit()
+
+    @commands.command(usage='prefix <new prefix>')
+    @commands.has_permissions(administrator=True)
+    @commands.guild_only()
+    async def prefix(self, ctx, *, new_prefix):
+        '''Sets the bot prefix within a server.'''
+
+        # Set the guild prefix in the database
+        async with aiosqlite.connect('./campfire.db') as db:
+            await db.execute('UPDATE prefixes SET prefix = ? WHERE guildid = ?', (new_prefix, ctx.guild.id))
+            await db.commit()
+
+        # Create embed
+        embed = discord.Embed(
+            description=f'Server prefix set to `{new_prefix}`',
+            colour=discord.Colour.orange(),
+            timestamp=ctx.message.created_at
+        )
+
+        embed.set_author(name='Campfire', icon_url=self.bot.user.avatar_url)
+        embed.set_footer(text=f'Changed by {ctx.author}', icon_url=ctx.author.avatar_url)
+
+        await ctx.send(embed=embed)
+
+    @prefix.error
+    async def prefix_errors(self, ctx, error):
+        '''Error handler for the prefix command.'''
+
+        # If member is not specified or specified member is not found
+        if isinstance(error, commands.MissingRequiredArgument):
+            await throw_error(ctx, 'Please make sure you are specifying a server prefix to set.')
+
+        # If the author is missing permissions
+        elif isinstance(error, commands.MissingPermissions):
+            await throw_error(ctx, 'You don\'t have permssion to use the prefix command.')
+
+        # If the command is used in a dm
+        elif isinstance(error, commands.NoPrivateMessage):
+            await throw_error(ctx, 'You can\'t use the prefix command in a direct message.')
+
+        else:
+            raise error
+
+
+def setup(bot):
+    bot.add_cog(Config(bot))

@@ -1,6 +1,7 @@
 import discord
 import logging
 import os
+import aiosqlite
 
 from discord.ext import commands
 from configparser import ConfigParser
@@ -16,9 +17,19 @@ logging.basicConfig(
     format='[%(asctime)s: %(name)s] %(levelname)s - %(message)s'
 )
 
-def command_prefix(bot, message):
+async def command_prefix(bot, message):
     '''Returns the bot command prefix.'''
-    return commands.when_mentioned_or('+')(bot, message)
+
+    # If command is used in a dm, only allow mentions as a prefix
+    if message.guild is None:
+        return commands.when_mentioned(bot, message)
+
+    # Pull guild prefix from the database
+    async with aiosqlite.connect('./campfire.db') as db:
+        async with db.execute('SELECT prefix FROM prefixes WHERE guildid = ?', (message.guild.id, )) as cursor:
+            row = await cursor.fetchone()
+
+    return commands.when_mentioned_or(row[0])(bot, message)
 
 # Intantiate bot
 bot = commands.Bot(
