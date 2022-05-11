@@ -1,7 +1,4 @@
-.vscode/
 env/
-__pycache__/
 
 .DS_Store
 config.ini
-campfire.db

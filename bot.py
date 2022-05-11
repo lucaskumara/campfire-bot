@@ -1,49 +1,47 @@
-import discord
-import logging
-import os
-import aiosqlite
+import lightbulb
+import argparse
+import configparser
 
-from discord.ext import commands
-from configparser import ConfigParser
-from helpcmd import HelpCommand
 
-# Load config
-config = ConfigParser()
+class Campfire(lightbulb.BotApp):
+    '''A class to represent an instance of the Campfire bot application.
+
+    Attributes:
+        database_client (AsyncIOMotorClient): The client connection to the
+            MongoDB database. (Not set upon instantiation)
+        database (AsyncIOMotorDatabase): The database where all application
+            data will be stored. (Not set upon instantiation)
+    '''
+
+    def __init__(self, token: str, guilds: tuple) -> None:
+        '''Initializes an instance of Campfire.
+
+        Calls the .__init__(...) method of the superclass and passes in all
+        required values.
+
+        Arguments:
+            token: The application token.
+            guilds: Tuple of guild ids to register application commands to.
+        '''
+        super().__init__(token=token, default_enabled_guilds=guilds)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', action='store_true')
+
+config = configparser.ConfigParser()
 config.read('config.ini')
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s: %(name)s] %(levelname)s - %(message)s'
-)
-
-async def command_prefix(bot, message):
-    '''Returns the bot command prefix.'''
-
-    # If command is used in a dm, only allow mentions as a prefix
-    if message.guild is None:
-        return commands.when_mentioned(bot, message)
-
-    # Pull guild prefix from the database
-    async with aiosqlite.connect('./campfire.db') as db:
-        async with db.execute('SELECT prefix FROM prefixes WHERE guildid = ?', (message.guild.id, )) as cursor:
-            row = await cursor.fetchone()
-
-    return commands.when_mentioned_or(row[0])(bot, message)
-
-# Intantiate bot
-bot = commands.Bot(
-    command_prefix=command_prefix,
-    help_command=HelpCommand(),
-    status=discord.Status.idle,
-    activity=discord.Game('@Campfire help')
-)
-bot.logger = logging.getLogger('bot')
-
-# Load cogs
-for filename in os.listdir('./cogs'):
-    if filename.endswith('.py'):
-        bot.load_extension(f'cogs.{filename[:-3]}')
-
 if __name__ == '__main__':
-    bot.run(config['BOT']['TOKEN'])
+    args = parser.parse_args()
+
+    if args.d:
+        token = config.get('DEVELOPMENT', 'TOKEN')
+        guilds = (config.getint('DEVELOPMENT', 'GUILD'))
+    else:
+        token = config.get('PRODUCTION', 'TOKEN')
+        guilds = ()
+
+    bot = Campfire(token, guilds)
+    bot.load_extensions_from('./extensions')
+    bot.run()
