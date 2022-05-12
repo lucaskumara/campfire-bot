@@ -4,6 +4,15 @@ import utils
 
 plugin = lightbulb.Plugin('Lobbies')
 
+CHOICES = [
+    'rename',
+    'lock',
+    'unlock',
+    'kick',
+    'ban',
+    'unban'
+]
+
 
 async def create_template(
     channel_name: str,
@@ -225,6 +234,22 @@ async def create(ctx: lightbulb.SlashContext) -> None:
             timestamp=True
         )
     )
+
+
+@lobby.child
+@lightbulb.option('command', 'The command to enable', choices=CHOICES)
+@lightbulb.command('enable', 'Enables the usage of a lobby command')
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def enable(ctx: lightbulb.SlashContext) -> None:
+    await ctx.respond(f'Enable {ctx.options.command}')
+
+
+@lobby.child
+@lightbulb.option('command', 'The command to disable', choices=CHOICES)
+@lightbulb.command('disable', 'Disables the usage of a lobby command')
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def disable(ctx: lightbulb.SlashContext) -> None:
+    await ctx.respond(f'Disable {ctx.options.command}')
 
 
 @lobby.set_error_handler()
