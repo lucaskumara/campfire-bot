@@ -202,8 +202,7 @@ async def lobby(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.command(
     'create',
     'Creates a new lobby template',
-    inherit_checks=True,
-    ephemeral=True
+    inherit_checks=True
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def create(ctx: lightbulb.SlashContext) -> None:
