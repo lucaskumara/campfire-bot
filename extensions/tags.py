@@ -271,8 +271,8 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     await ctx.respond(
         embed=utils.create_info_embed(
             'Tag created',
-            'Your tag has been successfully created. \n'
-            f'Use `/tag show {tag_name}` to view it.',
+            ('Your tag has been successfully created. \n'
+             f'Use `/tag show {tag_name}` to view it.'),
             plugin.bot.get_me().avatar_url,
             timestamp=True
         )
