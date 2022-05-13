@@ -59,7 +59,8 @@ async def paginate_all_tags(
         '''Specify how embed paginator builds the embed'''
         embed = utils.create_info_embed(
             title='Tag list',
-            description=f'Here is a list of tags. Use `/tag show [tag]` to view its contents. {content}',
+            description=('Here is a list of tags. Use `/tag show [tag]` to '
+                         f'view its contents. {content}'),
             icon=plugin.bot.get_me().avatar_url,
             timestamp=True
         )
