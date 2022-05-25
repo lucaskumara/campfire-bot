@@ -49,5 +49,6 @@ The application will be moved to production and released publicly once 3 feature
 
 - [x] Tags
 - [x] Custom Lobbies
-- [ ] Server Stats
 - [ ] Birthdays
+- [ ] Reputation
+- [ ] Server Stats
