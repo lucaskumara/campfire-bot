@@ -448,12 +448,42 @@ async def rename_lobby(lobby: hikari.GuildVoiceChannel, name: str) -> None:
     await lobby.edit(name=name)
 
 
+@plugin.listener(hikari.StartedEvent)
+async def clear_database(event: hikari.StartedEvent) -> None:
+    '''Clears any channels from the database that dont exist anymore.
+
+    Tries to fetch the channel. If the channel cannot be fetched, it does not 
+    exist therefore delete instances of it from the database.
+
+    Arguments:
+        event: The event that was fired. (GuildChannelDeleteEvent)
+
+    Returns:
+        None.
+    '''
+    template_cursor = plugin.bot.database.lobby_templates
+    clone_cursor = plugin.bot.database.lobby_clones
+
+    async for document in template_cursor.find({}):
+        try:
+            await plugin.bot.rest.fetch_channel(document['channel_id'])
+        except hikari.NotFoundError:
+            await plugin.bot.database.lobby_templates.delete_one({
+                'channel_id': document['channel_id'],
+            })
+
+    async for document in clone_cursor.find({}):
+        try:
+            await plugin.bot.rest.fetch_channel(document['channel_id'])
+        except hikari.NotFoundError:
+            await plugin.bot.database.lobby_clones.delete_one({
+                'channel_id': document['channel_id'],
+            })
+
+
 @plugin.listener(hikari.GuildChannelDeleteEvent)
 async def on_channel_delete(event: hikari.GuildChannelDeleteEvent) -> None:
     '''Deletes template/clone channels from collections if manually deleted.
-
-    If a voice channel is deleted manually, removes any instance of it
-    from the database.
 
     Arguments:
         event: The event that was fired. (GuildChannelDeleteEvent)
