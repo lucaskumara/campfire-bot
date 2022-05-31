@@ -59,7 +59,7 @@ async def give_reputation(
     'The member to give reputation to',
     type=hikari.Member
 )
-@lightbulb.command('reputation', 'Grants a user a point of reputation')
+@lightbulb.command('reputation', 'Grants a member a point of reputation')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def reputation(ctx: lightbulb.SlashContext) -> None:
     '''Grants a member a point of reputation.
