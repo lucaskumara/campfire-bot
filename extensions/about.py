@@ -7,7 +7,7 @@ plugin = lightbulb.Plugin('About')
 @plugin.command
 @lightbulb.command('about', 'Displays info about the bot')
 @lightbulb.implements(lightbulb.SlashCommand)
-async def about(ctx):
+async def about(ctx: lightbulb.SlashContext) -> None:
     '''Sends a message containing bot information to the server.
 
     Called when a user uses /about
