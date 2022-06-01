@@ -423,8 +423,8 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
         'Tag name': tag_name,
         'Tag author': f'{author.username}#{author.discriminator}',
         'Guild ID': ctx.guild_id,
-        'Created at': created.strftime("%b %d, %Y @%I:%M %p UTC"),
-        'Last modified': modified.strftime("%b %d, %Y @%I:%M %p UTC")
+        'Created at': created.strftime('%b %d, %Y @%I:%M %p UTC'),
+        'Last modified': modified.strftime('%b %d, %Y @%I:%M %p UTC')
     }
 
     # Format data into a string
