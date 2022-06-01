@@ -80,7 +80,7 @@ async def reputation(ctx: lightbulb.SlashContext) -> None:
         return
 
     await give_reputation(target_member.id, ctx.guild_id)
-    await ctx.respond(f'You have given a point of reputation to {int(target_member.username)}')
+    await ctx.respond(f'You have given a point of reputation to {target_member.username}')
 
 
 @reputation.set_error_handler()
