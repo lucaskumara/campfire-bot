@@ -27,12 +27,18 @@ async def guild_has_tags(
     '''
     if author is None:
         document = await plugin.bot.database.tags.find_one(
-            {'guild_id': guild_id}
+            {
+                'properties.guild_id': guild_id
+            }
         )
     else:
         document = await plugin.bot.database.tags.find_one(
-            {'guild_id': guild_id, 'author_id': author.id}
+            {
+                'properties.guild_id': guild_id,
+                'properties.author_id': author.id
+            }
         )
+
     return document is not None
 
 
@@ -69,12 +75,17 @@ async def paginate_all_tags(
 
     if author is None:
         async for document in plugin.bot.database.tags.find(
-            {'guild_id': guild_id}
+            {
+                'properties.guild_id': guild_id
+            }
         ):
             paginator.add_line(f'• {document["name"]}')
     else:
         async for document in plugin.bot.database.tags.find(
-            {'guild_id': guild_id, 'author_id': author.id}
+            {
+                'properties.guild_id': guild_id,
+                'properties.author_id': author.id
+            }
         ):
             paginator.add_line(f'• {document["name"]}')
 
@@ -92,8 +103,12 @@ async def get_tag(tag_name: str, guild_id: hikari.Snowflake) -> dict:
         The document of the tag.
     '''
     document = await plugin.bot.database.tags.find_one(
-        {'name': tag_name, 'guild_id': guild_id}
+        {
+            'name': tag_name,
+            'properties.guild_id': guild_id
+        }
     )
+
     return document
 
 
@@ -120,10 +135,12 @@ async def create_tag(
         {
             'name': tag_name,
             'content': tag_content,
-            'created': creation_time,
-            'modified': creation_time,
-            'guild_id': guild_id,
-            'author_id': author_id
+            'properties': {
+                'created_at': creation_time,
+                'modified_at': creation_time,
+                'guild_id': guild_id,
+                'author_id': author_id
+            }
         }
     )
 
@@ -139,7 +156,10 @@ async def delete_tag(tag_name: str, guild_id: hikari.Snowflake) -> None:
         None.
     '''
     await plugin.bot.database.tags.delete_one(
-        {'name': tag_name, 'guild_id': guild_id}
+        {
+            'name': tag_name,
+            'properties.guild_id': guild_id
+        }
     )
 
 
@@ -161,8 +181,16 @@ async def edit_tag(
     edit_time = datetime.now(timezone.utc).isoformat()
 
     await plugin.bot.database.tags.update_one(
-        {'name': tag_name, 'guild_id': guild_id},
-        {'$set': {'content': tag_content, 'modified': edit_time}}
+        {
+            'name': tag_name,
+            'properties.guild_id': guild_id
+        },
+        {
+            '$set': {
+                'content': tag_content,
+                'properties.modified_at': edit_time
+            }
+        }
     )
 
 
@@ -197,12 +225,13 @@ async def show(ctx: lightbulb.SlashCommand) -> None:
         None. 
     '''
     document = await get_tag(ctx.options.name.lower(), ctx.guild_id)
+    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if document is None:
         await ctx.respond(
             embed=utils.create_error_embed(
                 'That tag does not exist.',
-                plugin.bot.get_me().avatar_url,
+                bot_avatar_url,
                 timestamp=True
             ),
             delete_after=utils.DELETE_ERROR_DELAY
@@ -309,7 +338,7 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
         )
         return
 
-    if (ctx.member.id != document['author_id'] and
+    if (ctx.member.id != document['properties']['author_id'] and
             not permissions_for(ctx.member) &
             hikari.Permissions.MANAGE_MESSAGES):
         await ctx.respond(
@@ -363,7 +392,7 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
         )
         return
 
-    if ctx.member.id != document['author_id']:
+    if ctx.member.id != document['properties']['author_id']:
         await ctx.respond(
             embed=utils.create_error_embed(
                 'You don\'t have permission to edit that tag.',
@@ -415,9 +444,9 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
         return
 
     # Convert database information into usable data
-    author = await plugin.bot.rest.fetch_user(document['author_id'])
-    created = datetime.fromisoformat(document['created'])
-    modified = datetime.fromisoformat(document['modified'])
+    author = await plugin.bot.rest.fetch_user(document['properties']['author_id'])
+    created = datetime.fromisoformat(document['properties']['created_at'])
+    modified = datetime.fromisoformat(document['properties']['modified_at'])
 
     data = {
         'Tag name': tag_name,
