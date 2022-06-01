@@ -53,7 +53,7 @@ async def give_reputation(
 
 
 @plugin.command
-@lightbulb.add_cooldown(86400, 1, GuildBucket)
+@lightbulb.add_cooldown(600, 1, GuildBucket)
 @lightbulb.option(
     'member',
     'The member to give reputation to',
@@ -75,12 +75,12 @@ async def reputation(ctx: lightbulb.SlashContext) -> None:
     author_member = ctx.member
     target_member = ctx.options.member
 
-    if author_member == target_member:
+    if author_member.id == target_member.id:
         await ctx.respond('You cannot give yourself reputation.')
         return
 
     await give_reputation(target_member.id, ctx.guild_id)
-    await ctx.respond(f'You have given a point of reputation to {target_member.username}')
+    await ctx.respond(f'You have given a point of reputation to {int(target_member.username)}')
 
 
 @reputation.set_error_handler()
