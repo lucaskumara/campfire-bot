@@ -1,5 +1,6 @@
 import hikari
 import lightbulb
+import utils
 
 from lightbulb.buckets import GuildBucket
 
@@ -52,7 +53,21 @@ async def give_reputation(
         )
 
 
+@lightbulb.Check
+def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
+    '''A simple check to ensure that specified member is not the author.
+
+    Arguments:
+        ctx: The context for the command.
+
+    Returns:
+        True if check passes, false if not.
+    '''
+    return ctx.member.id != ctx.options.member.id
+
+
 @plugin.command
+@lightbulb.add_checks(check_target_is_not_author)
 @lightbulb.add_cooldown(600, 1, GuildBucket)
 @lightbulb.option(
     'member',
@@ -72,15 +87,19 @@ async def reputation(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     '''
-    author_member = ctx.member
     target_member = ctx.options.member
-
-    if author_member.id == target_member.id:
-        await ctx.respond('You cannot give yourself reputation.')
-        return
+    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     await give_reputation(target_member.id, ctx.guild_id)
-    await ctx.respond(f'You have given a point of reputation to {target_member.username}')
+    await ctx.respond(
+        embed=utils.create_info_embed(
+            'Reputation given',
+            ('You have given a point of reputation to '
+             f'`{target_member.username}`'),
+            bot_avatar_url,
+            timestamp=True
+        )
+    )
 
 
 @reputation.set_error_handler()
@@ -94,9 +113,28 @@ async def reputation_errors(event: lightbulb.CommandErrorEvent) -> bool:
         True if the exception can be handled, false if not.
     '''
     exception = event.exception
+    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if isinstance(exception, lightbulb.CommandIsOnCooldown):
-        await event.context.respond(f'Try again in {exception.retry_after} seconds')
+        await event.context.respond(
+            embed=utils.create_error_embed(
+                f'Try again in `{int(exception.retry_after)}` seconds.',
+                bot_avatar_url,
+                timestamp=True
+            ),
+            delete_after=utils.DELETE_ERROR_DELAY
+        )
+        return True
+
+    elif isinstance(exception, lightbulb.CheckFailure):
+        await event.context.respond(
+            embed=utils.create_error_embed(
+                'You can not give yourself reputation.',
+                bot_avatar_url,
+                timestamp=True
+            ),
+            delete_after=utils.DELETE_ERROR_DELAY
+        )
         return True
 
     return False
