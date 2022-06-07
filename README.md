@@ -10,7 +10,7 @@ The project was formally revitalized in November 2021 and is still in developmen
 
 Python 3.8, 3.9 and 3.10 are currently the only supported versions.
 
-Upon cloning the repository, you will need to create a `config.ini` file and install the project dependencies. Dependencies can be installed from `requirements.txt` using `$ pip install -r requirements.txt`
+Upon cloning the repository, you will need to create a `config.ini` file and install the project dependencies. Dependencies should be installed from `requirements.txt` using `pip install -r requirements.txt`
 
 ### Config File
 
