@@ -5,188 +5,259 @@ import utils
 from hikari.messages import ButtonStyle
 from lightbulb.utils.permissions import permissions_for
 from lightbulb.utils.pag import EmbedPaginator
-from lightbulb.utils.nav import ComponentButton as Button, ButtonNavigator, \
-    prev_page, next_page
+from lightbulb.utils.nav import (
+    ComponentButton as Button,
+    ButtonNavigator,
+    prev_page,
+    next_page,
+)
 from datetime import datetime, timezone
 
-plugin = lightbulb.Plugin('Tags')
+plugin = lightbulb.Plugin("Tags")
 
 
 async def guild_has_tags(
-    guild_id: hikari.Snowflake,
-    author: hikari.Member
+    tag_author: hikari.User,
+    tag_guild: hikari.GatewayGuild,
 ) -> bool:
-    '''Checks if the guild has any tags in it.
+    """Checks if the guild has any tags in it.
+
+    Query the database for any tags in the guild. If the tag author is not
+    None, query the database for any tags in the guild made by the author. If
+    the query gets at least one tag, the guild has tags.
 
     Arguments:
-        guild_id: The ID of the guild to check.
-        author: The author of the tags to search. Checks all tags if None.
+        tag_author: The author of the tags to search. Checks all tags if None.
+        tag_guild: The guild of the tags to search.
 
     Returns:
-        True if there is at least one tag in the guild, false if not.
-    '''
-    if author is None:
-        document = await plugin.bot.database.tags.find_one(
-            {'guild_id': guild_id}
+        True if the query retrieved at least one document, false if otherwise.
+    """
+    if tag_author is None:
+        cursor = plugin.bot.database.tags.aggregate(
+            [
+                {"$match": {"guild_id": tag_guild.id}},
+                {"$unwind": "$tags"},
+                {"$limit": 1},
+            ]
         )
     else:
-        document = await plugin.bot.database.tags.find_one(
-            {'guild_id': guild_id, 'author_id': author.id}
+        cursor = plugin.bot.database.tags.aggregate(
+            [
+                {"$match": {"guild_id": tag_guild.id}},
+                {"$unwind": "$tags"},
+                {"$match": {"tags.author_id": tag_author.id}},
+                {"$limit": 1},
+            ]
         )
-    return document is not None
+
+    documents = await cursor.to_list(length=1)
+
+    return documents != []
 
 
 async def paginate_all_tags(
-    guild_id: hikari.Snowflake,
-    author: hikari.Member
+    tag_author: hikari.User, tag_guild: hikari.GatewayGuild
 ) -> EmbedPaginator:
-    '''Adds all tags in the server to the paginator.
+    """Adds guild tags to the paginator.
 
-    Creates an EmbedPaginator and adds formatted lines containing a list of 
-    all tags in a guild.
+    Creates an EmbedPaginator and adds formatted lines containing a list of
+    tags in a guild to it. The queried tags depend on whether the author is
+    None or not. If the author is none, query all tags for the guild,
+    otherwise, query all tags for the guild that were written by the author.
 
     Arguments:
-        guild_id: The ID of the guild to list tags for.
-        author: The author of all the tags to list. Lists all tags if None
+        tag_author: The author of all the tags to list. Lists all if None.
+        tag_guild: The guild of all the tags to list.
 
     Returns:
         The constructed embed paginator.
-    '''
-    paginator = EmbedPaginator(prefix='```', suffix='```', max_lines=10)
+    """
+    paginator = EmbedPaginator(prefix="```", suffix="```", max_lines=10)
 
     @paginator.embed_factory()
     def build_embed(index, content):
-        '''Specify how embed paginator builds the embed'''
+        """Specify how embed paginator builds the embed"""
         embed = utils.create_info_embed(
-            title='Tag list',
-            description=('Here is a list of tags. Use `/tag show [tag]` to '
-                         f'view its contents. {content}'),
-            icon=plugin.bot.get_me().avatar_url,
-            timestamp=True
+            "Tag list",
+            f"Here is a list of tags. Use `/tag show [tag]` to view its contents. {content}",
+            plugin.bot.get_me().avatar_url,
+            True,
         )
-        embed.set_footer(f'Page {index}')
+        embed.set_footer(f"Page {index}")
         return embed
 
-    if author is None:
-        async for document in plugin.bot.database.tags.find(
-            {'guild_id': guild_id}
-        ):
-            paginator.add_line(f'• {document["name"]}')
+    if tag_author is None:
+        pipeline = [
+            {"$match": {"guild_id": tag_guild.id}},
+            {"$unwind": "$tags"},
+        ]
     else:
-        async for document in plugin.bot.database.tags.find(
-            {'guild_id': guild_id, 'author_id': author.id}
-        ):
-            paginator.add_line(f'• {document["name"]}')
+        pipeline = [
+            {"$match": {"guild_id": tag_guild.id, "tags.author_id": tag_author.id}},
+            {"$unwind": "$tags"},
+        ]
+
+    async for document in plugin.bot.database.tags.aggregate(pipeline):
+        tag_name = document["tags"]["name"]
+        paginator.add_line(f"• {tag_name}")
 
     return paginator
 
 
-async def get_tag(tag_name: str, guild_id: hikari.Snowflake) -> dict:
-    '''Returns the retrived document of the tag in the server.
+async def get_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> dict:
+    """Returns the retrived document of the tag in the guild.
+
+    Query the database for a tag in the specified guild with the specified tag
+    name. If a document is found, return the document itself from the list of
+    queried documents.
 
     Arguments:
         tag_name: The name of the tag to find.
-        guild_id: The guild of the tag to find.
+        tag_guild: The guild of the tag to find.
 
     Returns:
-        The document of the tag.
-    '''
-    document = await plugin.bot.database.tags.find_one(
-        {'name': tag_name, 'guild_id': guild_id}
+        The document of the tag if it exists, otherwise None.
+    """
+    cursor = plugin.bot.database.tags.aggregate(
+        [
+            {"$match": {"guild_id": tag_guild.id}},
+            {"$unwind": "$tags"},
+            {"$match": {"tags.name": tag_name}},
+            {"$limit": 1},
+        ]
     )
-    return document
+    documents = await cursor.to_list(length=1)
+
+    if documents != []:
+        return documents[0]
+
+    return None
 
 
 async def create_tag(
     tag_name: str,
     tag_content: str,
-    author_id: hikari.Snowflake,
-    guild_id: hikari.Snowflake
+    tag_author: hikari.User,
+    tag_guild: hikari.GatewayGuild,
 ) -> None:
-    '''Creates a new tag in the server.
+    """Creates a new tag in the guild.
+
+    Pushes a new document with the specified tag name and content into the
+    guild document tags list if it exists. Otherwise, create a guild document
+    with the tags list containing the tag document.
 
     Arguments:
         tag_name: The name of the tag.
         tag_content: The content of the tag.
-        author_id: The ID of the tag author.
-        guild_id: The ID of the tags guild.
+        tag_author: The author of the tag.
+        tag_guild: The guild of the tag.
 
     Returns:
         None.
-    '''
+    """
     creation_time = datetime.now(timezone.utc).isoformat()
 
-    await plugin.bot.database.tags.insert_one(
+    await plugin.bot.database.tags.update_one(
+        {"guild_id": tag_guild.id},
         {
-            'name': tag_name,
-            'content': tag_content,
-            'created': creation_time,
-            'modified': creation_time,
-            'guild_id': guild_id,
-            'author_id': author_id
-        }
+            "$push": {
+                "tags": {
+                    "name": tag_name,
+                    "content": tag_content,
+                    "author_id": tag_author.id,
+                    "created_at": creation_time,
+                    "modified_at": creation_time,
+                    "uses": 0,
+                }
+            }
+        },
+        upsert=True,
     )
 
 
-async def delete_tag(tag_name: str, guild_id: hikari.Snowflake) -> None:
-    '''Deletes a tag in the server.
+async def delete_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
+    """Deletes a tag in the guild.
+
+    Pulls a document with the specified tag name from the guild document tags
+    list.
 
     Arguments:
         tag_name: The name of the tag.
-        guild_id: The ID of the tags guild.
+        tag_guild: The guild of the tag.
 
     Returns:
         None.
-    '''
-    await plugin.bot.database.tags.delete_one(
-        {'name': tag_name, 'guild_id': guild_id}
+    """
+    await plugin.bot.database.tags.update_one(
+        {"guild_id": tag_guild.id}, {"$pull": {"tags": {"name": tag_name}}}
     )
 
 
 async def edit_tag(
-    tag_name: str,
-    tag_content: str,
-    guild_id: hikari.Snowflake
+    tag_name: str, tag_content: str, tag_guild: hikari.GatewayGuild
 ) -> None:
-    '''Edits a tag in the server.
+    """Edits a tag in the guild.
+
+    Updates a document with the specified tag name from the guild document
+    tags list to have the new specified tag content. Also updates the time the
+    tag was last modified.
 
     Arguments:
-        tag_name: The name of the tag.
-        tag_content: The new content of the tag.
-        guild_id: The ID of the tags guild.
+        tag_name: The name of the tag to update.
+        tag_content: The new contents of the tag.
+        tag_guild: The guild of the tag to update.
 
     Returns:
         None.
-    '''
+    """
     edit_time = datetime.now(timezone.utc).isoformat()
 
     await plugin.bot.database.tags.update_one(
-        {'name': tag_name, 'guild_id': guild_id},
-        {'$set': {'content': tag_content, 'modified': edit_time}}
+        {"guild_id": tag_guild.id, "tags.name": tag_name},
+        {"$set": {"tags.$.content": tag_content, "tags.$.modified_at": edit_time}},
+    )
+
+
+async def increment_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
+    """Increments the number of uses of a tag in a guild by one.
+
+    Updates a document with the specified tag name from the guild document
+    tags list by incrementing the uses of the tag has been used by 1.
+
+    Arguments:
+        tag_name: The name of the tag to increment.
+        tag_guild: The guild of the tag to increment.
+
+    Returns:
+        None.
+    """
+    await plugin.bot.database.tags.update_one(
+        {"guild_id": tag_guild.id, "tags.name": tag_name}, {"$inc": {"tags.$.uses": 1}}
     )
 
 
 @plugin.command
-@lightbulb.command('tag', 'Base of tag command group')
+@lightbulb.command("tag", "Base of tag command group")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def tag(ctx: lightbulb.SlashContext) -> None:
-    '''Base of the tag command group.
+    """Base of the tag command group.
 
     Arguments:
         ctx: The context for the command.
 
     Returns:
         None.
-    '''
+    """
     pass
 
 
 @tag.child
-@lightbulb.option('name', 'The name of the tag')
-@lightbulb.command('show', 'Shows the content of a tag')
+@lightbulb.option("name", "The name of the tag")
+@lightbulb.command("show", "Shows the content of a tag")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def show(ctx: lightbulb.SlashCommand) -> None:
-    '''Displays a tag in the server.
+    """Displays a tag in the guild.
 
     Called when a user uses /tag show <tag name>
 
@@ -194,31 +265,31 @@ async def show(ctx: lightbulb.SlashCommand) -> None:
         ctx: The context for the command.
 
     Returns:
-        None. 
-    '''
-    document = await get_tag(ctx.options.name.lower(), ctx.guild_id)
+        None.
+    """
+    tag_name = ctx.options.name.lower()
+    tag_guild = ctx.get_guild()
+    document = await get_tag(tag_name, tag_guild)
 
+    # If there is no existing tag
     if document is None:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'That tag does not exist.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
+        error_embed = utils.create_error_embed(
+            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
-    await ctx.respond(document['content'])
+    await increment_tag(tag_name, tag_guild)
+    await ctx.respond(document["tags"]["content"])
 
 
 @tag.child
-@lightbulb.option('content', 'The content of the tag')
-@lightbulb.option('name', 'The name of the tag')
-@lightbulb.command('create', 'Creates a new tag')
+@lightbulb.option("content", "The content of the tag")
+@lightbulb.option("name", "The name of the tag")
+@lightbulb.command("create", "Creates a new tag")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def create(ctx: lightbulb.SlashContext) -> None:
-    '''Creates a new tag in the server.
+    """Creates a new tag in the guild.
 
     Called when a user uses /tag create <tag name> <tag content>
 
@@ -226,66 +297,61 @@ async def create(ctx: lightbulb.SlashContext) -> None:
         ctx: The context for the command.
 
     Returns:
-        None. 
-    '''
+        None.
+    """
     tag_name = ctx.options.name.lower()
-    document = await get_tag(tag_name, ctx.guild_id)
+    tag_content = ctx.options.content
+    tag_author = ctx.author
+    tag_guild = ctx.get_guild()
 
-    if document is not None:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'That tag already exists.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
+    # If there is already an existing tag
+    if await get_tag(tag_name, tag_guild) is not None:
+        error_embed = utils.create_error_embed(
+            "That tag already exists.", plugin.bot.get_me().avatar_url, timestamp=True
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
-    if len(ctx.options.name) > 54:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'The tag name must be less than 54 characters long.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
-        )
-        return
-
-    if len(ctx.options.content) > 2000:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'The tag content must be less than 2000 characters long.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            )
-        )
-        return
-
-    await create_tag(
-        tag_name,
-        ctx.options.content,
-        ctx.author.id,
-        ctx.guild_id
-    )
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            'Tag created',
-            ('Your tag has been successfully created. \n'
-             f'Use `/tag show {tag_name}` to view it.'),
+    # If the desired tag name is greater than 54 characters long
+    if len(tag_name) > 54:
+        error_embed = utils.create_error_embed(
+            "The tag name must be less than 54 characters long.",
             plugin.bot.get_me().avatar_url,
-            timestamp=True
+            timestamp=True,
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
+        return
+
+    # If the desired tag content is greater than 2000 characters long
+    if len(tag_content) > 2000:
+        error_embed = utils.create_error_embed(
+            "The tag content must be less than 2000 characters long.",
+            plugin.bot.get_me().avatar_url,
+            timestamp=True,
+        )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
+        return
+
+    tag_created_embed = utils.create_info_embed(
+        "Tag created",
+        (
+            "Your tag has been successfully created. \n"
+            f"Use `/tag show {tag_name}` to view it."
+        ),
+        plugin.bot.get_me().avatar_url,
+        timestamp=True,
     )
+
+    await create_tag(tag_name, tag_content, tag_author, tag_guild)
+    await ctx.respond(embed=tag_created_embed)
 
 
 @tag.child
-@lightbulb.option('name', 'The name of tag')
-@lightbulb.command('delete', 'Deletes an existing tag')
+@lightbulb.option("name", "The name of tag")
+@lightbulb.command("delete", "Deletes an existing tag")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def delete(ctx: lightbulb.SlashContext) -> None:
-    '''Deletes an existing tag from the server.
+    """Deletes an existing tag from the guild.
 
     Called when a user uses /tag delete <tag name>
 
@@ -293,53 +359,52 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
         ctx: The context for the command.
 
     Returns:
-        None. 
-    '''
+        None.
+    """
     tag_name = ctx.options.name.lower()
-    document = await get_tag(tag_name, ctx.guild_id)
+    tag_author = ctx.author
+    tag_guild = ctx.get_guild()
+    document = await get_tag(tag_name, tag_guild)
 
+    # If there is no existing tag
     if document is None:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'That tag does not exist.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
+        error_embed = utils.create_error_embed(
+            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
-    if (ctx.member.id != document['author_id'] and
-            not permissions_for(ctx.member) &
-            hikari.Permissions.MANAGE_MESSAGES):
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'You don\'t have permission to delete that tag.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
-        )
-        return
-
-    await delete_tag(tag_name, ctx.guild_id)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            'Tag deleted',
-            f'The tag `{tag_name}` has been successfully deleted.',
+    # If the author does not own or have the permissions to delete the tag
+    if (
+        tag_author.id != document["author_id"]
+        and not permissions_for(tag_author) & hikari.Permissions.MANAGE_MESSAGES
+    ):
+        error_embed = utils.create_error_embed(
+            "You don't have permission to delete that tag.",
             plugin.bot.get_me().avatar_url,
-            timestamp=True
+            timestamp=True,
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
+        return
+
+    tag_deleted_embed = utils.create_info_embed(
+        "Tag deleted",
+        f"The tag `{tag_name}` has been successfully deleted.",
+        plugin.bot.get_me().avatar_url,
+        timestamp=True,
     )
+
+    await delete_tag(tag_name, tag_guild)
+    await ctx.respond(embed=tag_deleted_embed)
 
 
 @tag.child
-@lightbulb.option('content', 'The content of the tag')
-@lightbulb.option('name', 'The name of the tag')
-@lightbulb.command('edit', 'Edits an existing tag')
+@lightbulb.option("content", "The content of the tag")
+@lightbulb.option("name", "The name of the tag")
+@lightbulb.command("edit", "Edits an existing tag")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def edit(ctx: lightbulb.SlashCommand) -> None:
-    '''Edits the content of a tag in the server.
+    """Edits the content of a tag in the guild.
 
     Called when a user uses /tag edit <tag name> <tag content>
 
@@ -347,50 +412,49 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
         ctx: The context for the command.
 
     Returns:
-        None. 
-    '''
+        None.
+    """
     tag_name = ctx.options.name.lower()
-    document = await get_tag(tag_name, ctx.guild_id)
+    tag_content = ctx.options.content
+    tag_author = ctx.author
+    tag_guild = ctx.get_guild()
+    document = await get_tag(tag_name, tag_guild)
 
+    # If there is no existing tag
     if document is None:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'That tag does not exist.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
+        error_embed = utils.create_error_embed(
+            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
-    if ctx.member.id != document['author_id']:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'You don\'t have permission to edit that tag.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
-        )
-        return
-
-    await edit_tag(tag_name, ctx.options.content, ctx.guild_id)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            'Tag updated',
-            f'The tag `{tag_name}` has been successfully updated.',
+    # If the author does not own the tag
+    if tag_author.id != document["tags"]["author_id"]:
+        error_embed = utils.create_error_embed(
+            "You don't have permission to edit that tag.",
             plugin.bot.get_me().avatar_url,
-            timestamp=True
+            timestamp=True,
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
+        return
+
+    tag_edited_embed = utils.create_info_embed(
+        "Tag updated",
+        f"The tag `{tag_name}` has been successfully updated.",
+        plugin.bot.get_me().avatar_url,
+        timestamp=True,
     )
+
+    await edit_tag(tag_name, tag_content, tag_guild)
+    await ctx.respond(embed=tag_edited_embed)
 
 
 @tag.child
-@lightbulb.option('name', 'The name of the tag')
-@lightbulb.command('info', 'Shows info about an existing tag')
+@lightbulb.option("name", "The name of the tag")
+@lightbulb.command("info", "Shows info about an existing tag")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def info(ctx: lightbulb.SlashCommand) -> None:
-    '''Shows information about a tag in the server.
+    """Shows information about a tag in the guild.
 
     Called when a user uses /tag info <tag name>
 
@@ -398,60 +462,58 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
         ctx: The context for the command.
 
     Returns:
-        None. 
-    '''
+        None.
+    """
     tag_name = ctx.options.name.lower()
-    document = await get_tag(tag_name, ctx.guild_id)
+    tag_guild = ctx.get_guild()
+    document = await get_tag(tag_name, tag_guild)
 
+    # If there is no existing tag
     if document is None:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'That tag does not exist.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
+        error_embed = utils.create_error_embed(
+            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
     # Convert database information into usable data
-    author = await plugin.bot.rest.fetch_user(document['author_id'])
-    created = datetime.fromisoformat(document['created'])
-    modified = datetime.fromisoformat(document['modified'])
+    tag_author_id = document["tags"]["author_id"]
+    tag_created_at_iso = document["tags"]["created_at"]
+    tag_modified_at_iso = document["tags"]["modified_at"]
+    tag_uses = document["tags"]["uses"]
 
-    data = {
-        'Tag name': tag_name,
-        'Tag author': f'{author.username}#{author.discriminator}',
-        'Guild ID': ctx.guild_id,
-        'Created at': created.strftime('%b %d, %Y @%I:%M %p UTC'),
-        'Last modified': modified.strftime('%b %d, %Y @%I:%M %p UTC')
-    }
+    tag_author = await plugin.bot.rest.fetch_user(tag_author_id)
+    tag_author_name = f"{tag_author.username}#{tag_author.discriminator}"
+    tag_created_at = datetime.fromisoformat(tag_created_at_iso)
+    tag_modified_at = datetime.fromisoformat(tag_modified_at_iso)
+    tag_created_at_formatted = tag_created_at.strftime("%b %d, %Y")
+    tag_modified_at_formatted = tag_modified_at.strftime("%b %d, %Y")
 
-    # Format data into a string
-    formatted = '\n'.join([f'{key}: {value}' for key, value in data.items()])
-    formatted = '```' + formatted + '```'
-
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            'Tag info',
-            f'Use `/tag show {tag_name}` to view its contents. {formatted}',
-            plugin.bot.get_me().avatar_url,
-            timestamp=True
-        )
+    info_embed = utils.create_info_embed(
+        "Tag info",
+        f"Use `/tag show {tag_name}` to view its contents.",
+        plugin.bot.get_me().avatar_url,
+        timestamp=True,
     )
+
+    info_embed.add_field("Name", tag_name, inline=True)
+    info_embed.add_field("Author", tag_author.mention, inline=True)
+    info_embed.add_field("Author ID", tag_author_id, inline=True)
+    info_embed.add_field("Uses", tag_uses, inline=True)
+    info_embed.add_field("Created at", tag_created_at_formatted, inline=True)
+    info_embed.add_field("Modified at", tag_modified_at_formatted, inline=True)
+
+    await ctx.respond(embed=info_embed)
 
 
 @tag.child
 @lightbulb.option(
-    'member',
-    'The owner of the tags to view',
-    type=hikari.Member,
-    required=False
+    "member", "The owner of the tags to view", type=hikari.Member, required=False
 )
-@lightbulb.command('list', 'Lists all server tags')
+@lightbulb.command("list", "Lists all server tags")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def list(ctx: lightbulb.SlashCommand) -> None:
-    '''Lists all tags in the server.
+    """Lists all tags in the guild.
 
     Called when a user uses /tag list [member]
 
@@ -459,35 +521,37 @@ async def list(ctx: lightbulb.SlashCommand) -> None:
         ctx: The context for the command.
 
     Returns:
-        None. 
-    '''
-    if not await guild_has_tags(ctx.guild_id, ctx.options.member):
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                'There are no tags to display.',
-                plugin.bot.get_me().avatar_url,
-                timestamp=True
-            ),
-            delete_after=utils.DELETE_ERROR_DELAY
+        None.
+    """
+    tag_author = ctx.options.member
+    tag_guild = ctx.get_guild()
+
+    # If there are no tags to display
+    if not await guild_has_tags(tag_author, tag_guild):
+        error_embed = utils.create_error_embed(
+            "There are no tags to display.",
+            plugin.bot.get_me().avatar_url,
+            timestamp=True,
         )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
-    paginator = await paginate_all_tags(ctx.guild_id, ctx.options.member)
+    paginator = await paginate_all_tags(tag_author, tag_guild)
     buttons = [
-        Button('Previous', False, ButtonStyle.PRIMARY, 'previous', prev_page),
-        Button('Next', False, ButtonStyle.PRIMARY, 'next', next_page)
+        Button("Previous", False, ButtonStyle.PRIMARY, "previous", prev_page),
+        Button("Next", False, ButtonStyle.PRIMARY, "next", next_page),
     ]
 
     await ButtonNavigator(paginator.build_pages(), buttons=buttons).run(ctx)
 
 
 def load(bot: lightbulb.BotApp) -> None:
-    '''Loads the 'Tags' plugin. Called when extension is loaded.
+    """Loads the 'Tags' plugin. Called when extension is loaded.
 
     Arguments:
         bot: The bot application to add the plugin to.
 
     Returns:
         None.
-    '''
+    """
     bot.add_plugin(plugin)
