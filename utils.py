@@ -6,9 +6,7 @@ ERROR_EMBED_COLOUR = None  # hikari.Colour(0xE74C3C)
 DELETE_ERROR_DELAY = 10
 
 
-def create_info_embed(
-    title: str, description: str, icon: str, timestamp: bool = False
-) -> hikari.Embed:
+def create_info_embed(title: str, description: str, icon: str) -> hikari.Embed:
     """Creates and returns an embed to display information to users.
 
     Creates an instance of an embed and fills it with the data provided by the
@@ -18,7 +16,6 @@ def create_info_embed(
         title: The title of the embed.
         description: The description of the embed.
         icon: The URL of the embed icon.
-        timestamp: Whether or not to include a timestamp in the embed.
 
     Returns:
         The created embed.
@@ -27,15 +24,13 @@ def create_info_embed(
         title=title,
         description=description,
         colour=INFO_EMBED_COLOUR,
-        timestamp=datetime.now(timezone.utc) if timestamp else None,
+        timestamp=datetime.now(timezone.utc),
     )
     embed.set_author(name="Campfire", icon=icon)
     return embed
 
 
-def create_error_embed(
-    description: str, icon: str, timestamp: bool = False
-) -> hikari.Embed:
+def create_error_embed(description: str, icon: str) -> hikari.Embed:
     """Creates and returns an embed to display errors to users.
 
     Creates an instance of an embed and fills it with the data provided by the
@@ -44,7 +39,6 @@ def create_error_embed(
     Arguments:
         description: The description of the embed.
         icon: The URL of the embed icon.
-        timestamp: Whether or not to include a timestamp in the embed.
 
     Returns:
         The created embed.
@@ -52,7 +46,7 @@ def create_error_embed(
     embed = hikari.Embed(
         description=description,
         colour=ERROR_EMBED_COLOUR,
-        timestamp=datetime.now(timezone.utc) if timestamp else None,
+        timestamp=datetime.now(timezone.utc),
     )
     embed.set_author(name="Campfire", icon=icon)
     return embed
