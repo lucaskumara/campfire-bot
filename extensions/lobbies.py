@@ -571,16 +571,14 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     """
     guild = ctx.get_guild()
     bot_avatar_url = plugin.bot.get_me().avatar_url
+    create_embed = utils.create_info_embed(
+        "Channel created",
+        "Your lobby has been created. Feel free to edit it!",
+        bot_avatar_url,
+    )
 
     await create_template("New Lobby - Edit me!", guild)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Channel created",
-            "Your lobby has been created. Feel free to edit it!",
-            bot_avatar_url,
-            timestamp=True,
-        )
-    )
+    await ctx.respond(embed=create_embed)
 
 
 @lobby.child
@@ -605,23 +603,23 @@ async def enable(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if not await command_is_disabled(command_name, guild_id):
+        error_embed = utils.create_error_embed(
+            "That command is already enabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "That command is already enabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
 
-    await enable_command(command_name, guild_id)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Command enabled",
-            f"The command `{command_name}` has been enabled.",
-            bot_avatar_url,
-            timestamp=True,
-        )
+    enabled_embed = utils.create_info_embed(
+        "Command enabled",
+        f"The command `{command_name}` has been enabled.",
+        bot_avatar_url,
     )
+
+    await enable_command(command_name, guild_id)
+    await ctx.respond(embed=enabled_embed)
 
 
 @lobby.child
@@ -646,23 +644,23 @@ async def disable(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled(command_name, guild_id):
+        error_embed = utils.create_error_embed(
+            "That command is already disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "That command is already disabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
 
-    await disable_command(command_name, guild_id)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Command disabled",
-            f"The command `{command_name}` has been disabled.",
-            bot_avatar_url,
-            timestamp=True,
-        )
+    disable_embed = utils.create_info_embed(
+        "Command disabled",
+        f"The command `{command_name}` has been disabled.",
+        bot_avatar_url,
     )
+
+    await disable_command(command_name, guild_id)
+    await ctx.respond(embed=disable_embed)
 
 
 @lobby.child
@@ -684,12 +682,11 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled("rename", guild_id):
+        error_embed = utils.create_error_embed(
+            "Sorry. This command has been disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "Sorry. This command has been disabled..",
-                bot_avatar_url,
-                timestamp=True,
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -701,10 +698,11 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
+        error_embed = utils.create_error_embed(
+            "You are not in a lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not in a lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -713,10 +711,11 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
     document = await get_clone_document(author_channel_id)
 
     if document["owner_id"] != author_member.id:
+        error_embed = utils.create_error_embed(
+            "You are not the owner of this lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not the owner of this lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -724,12 +723,11 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
     clean_name = ctx.options.name.strip()
 
     if not (1 <= len(clean_name) <= 100):
+        error_embed = utils.create_error_embed(
+            "The new name must be 1-100 character long.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "The new name must be 1-100 character long.",
-                bot_avatar_url,
-                timestamp=True,
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -737,26 +735,25 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
     lobby = guild.get_channel(author_channel_id)
 
     try:
-        await rename_lobby(lobby, clean_name)
-        await ctx.respond(
-            embed=utils.create_info_embed(
-                "Channel renamed",
-                f"The lobby has been renamed to `{clean_name}`.",
-                bot_avatar_url,
-                timestamp=True,
-            )
+        rename_embed = utils.create_info_embed(
+            "Channel renamed",
+            f"The lobby has been renamed to `{clean_name}`.",
+            bot_avatar_url,
         )
 
+        await rename_lobby(lobby, clean_name)
+        await ctx.respond(embed=rename_embed)
+
     except hikari.errors.RateLimitedError as error:
-        await ctx.respond(
-            embed=utils.create_error_embed(
-                (
-                    "You are being rate limited. Try again in "
-                    f"`{int(error.retry_after)}` seconds."
-                ),
-                bot_avatar_url,
-                timestamp=True,
+        error_embed = utils.create_error_embed(
+            (
+                "You are being rate limited. Try again in "
+                f"`{int(error.retry_after)}` seconds."
             ),
+            bot_avatar_url,
+        )
+        await ctx.respond(
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
 
@@ -779,10 +776,11 @@ async def lock(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled("lock", guild_id):
+        error_embed = utils.create_error_embed(
+            "Sorry. This command has been disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "Sorry. This command has been disabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -794,10 +792,11 @@ async def lock(ctx: lightbulb.SlashContext) -> None:
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
+        error_embed = utils.create_error_embed(
+            "You are not in a lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not in a lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -806,10 +805,11 @@ async def lock(ctx: lightbulb.SlashContext) -> None:
     document = await get_clone_document(author_channel_id)
 
     if document["owner_id"] != author_member.id:
+        error_embed = utils.create_error_embed(
+            "You are not the owner of this lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not the owner of this lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -817,25 +817,22 @@ async def lock(ctx: lightbulb.SlashContext) -> None:
     channel = guild.get_channel(author_channel_id)
 
     if lobby_is_locked(channel):
+        error_embed = utils.create_error_embed(
+            "The lobby is already locked.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "The lobby is already locked.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
 
     channel = guild.get_channel(author_channel_id)
+    lock_embed = utils.create_info_embed(
+        "Channel locked", "Your lobby has been locked.", bot_avatar_url
+    )
 
     await lock_lobby(channel)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Channel locked",
-            "Your lobby has been locked.",
-            bot_avatar_url,
-            timestamp=True,
-        )
-    )
+    await ctx.respond(embed=lock_embed)
 
 
 @lobby.child
@@ -856,10 +853,11 @@ async def unlock(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled("unlock", guild_id):
+        error_embed = utils.create_error_embed(
+            "Sorry. This command has been disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "Sorry. This command has been disabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -871,10 +869,11 @@ async def unlock(ctx: lightbulb.SlashContext) -> None:
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
+        error_embed = utils.create_error_embed(
+            "You are not in a lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not in a lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -883,10 +882,11 @@ async def unlock(ctx: lightbulb.SlashContext) -> None:
     document = await get_clone_document(author_channel_id)
 
     if document["owner_id"] != ctx.member.id:
+        error_embed = utils.create_error_embed(
+            "You are not the owner of this lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not the owner of this lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -894,25 +894,22 @@ async def unlock(ctx: lightbulb.SlashContext) -> None:
     channel = guild.get_channel(author_channel_id)
 
     if not lobby_is_locked(channel):
+        error_embed = utils.create_error_embed(
+            "The lobby is already unlocked.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "The lobby is already unlocked.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
 
     channel = guild.get_channel(author_channel_id)
+    unlock_embed = utils.create_info_embed(
+        "Channel unlocked", "Your lobby has been unlocked.", bot_avatar_url
+    )
 
     await unlock_lobby(channel)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Channel unlocked",
-            "Your lobby has been unlocked.",
-            bot_avatar_url,
-            timestamp=True,
-        )
-    )
+    await ctx.respond(embed=unlock_embed)
 
 
 @lobby.child
@@ -934,10 +931,11 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled("kick", guild_id):
+        error_embed = utils.create_error_embed(
+            "Sorry. This command has been disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "Sorry. This command has been disabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -949,10 +947,11 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
+        error_embed = utils.create_error_embed(
+            "You are not in a lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not in a lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -961,10 +960,11 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
     document = await get_clone_document(author_channel_id)
 
     if document["owner_id"] != author_member.id:
+        error_embed = utils.create_error_embed(
+            "You are not the owner of this lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not the owner of this lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -973,23 +973,23 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
     target_voice_state = guild.get_voice_state(target_member)
 
     if target_voice_state is None or author_channel_id != target_voice_state.channel_id:
+        error_embed = utils.create_error_embed(
+            "That member is not in the lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "That member is not in the lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
 
-    await kick_member(target_member)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Member kicked",
-            f"`{target_member.username}` has been kicked from the lobby.",
-            bot_avatar_url,
-            timestamp=True,
-        )
+    kick_embed = utils.create_info_embed(
+        "Member kicked",
+        f"`{target_member.username}` has been kicked from the lobby.",
+        bot_avatar_url,
     )
+
+    await kick_member(target_member)
+    await ctx.respond(embed=kick_embed)
 
 
 @lobby.child
@@ -1011,10 +1011,11 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled("ban", guild_id):
+        error_embed = utils.create_error_embed(
+            "Sorry. This command has been disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "Sorry. This command has been disabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1026,10 +1027,11 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
+        error_embed = utils.create_error_embed(
+            "You are not in a lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not in a lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1038,10 +1040,11 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
     document = await get_clone_document(author_channel_id)
 
     if document["owner_id"] != author_member.id:
+        error_embed = utils.create_error_embed(
+            "You are not the owner of this lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not the owner of this lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1051,10 +1054,11 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
     target_voice_state = guild.get_voice_state(target_member)
 
     if member_is_banned(author_channel, target_member):
+        error_embed = utils.create_error_embed(
+            "That member is already banned.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "That member is already banned.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1065,15 +1069,14 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
     ):
         await kick_member(target_member)
 
-    await ban_member(author_channel, target_member)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Member banned",
-            f"`{target_member.username}` has been banned from the lobby.",
-            bot_avatar_url,
-            timestamp=True,
-        )
+    ban_embed = utils.create_info_embed(
+        "Member banned",
+        f"`{target_member.username}` has been banned from the lobby.",
+        bot_avatar_url,
     )
+
+    await ban_member(author_channel, target_member)
+    await ctx.respond(embed=ban_embed)
 
 
 @lobby.child
@@ -1095,10 +1098,11 @@ async def unban(ctx: lightbulb.SlashContext) -> None:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if await command_is_disabled("unban", guild_id):
+        error_embed = utils.create_error_embed(
+            "Sorry. This command has been disabled.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "Sorry. This command has been disabled.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1110,10 +1114,11 @@ async def unban(ctx: lightbulb.SlashContext) -> None:
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
+        error_embed = utils.create_error_embed(
+            "You are not in a lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not in a lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1122,10 +1127,11 @@ async def unban(ctx: lightbulb.SlashContext) -> None:
     document = await get_clone_document(author_channel_id)
 
     if document["owner_id"] != author_member.id:
+        error_embed = utils.create_error_embed(
+            "You are not the owner of this lobby.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "You are not the owner of this lobby.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
@@ -1134,23 +1140,23 @@ async def unban(ctx: lightbulb.SlashContext) -> None:
     target_member = ctx.options.member
 
     if not member_is_banned(author_channel, target_member):
+        error_embed = utils.create_error_embed(
+            "That member is not banned.", bot_avatar_url
+        )
         await ctx.respond(
-            embed=utils.create_error_embed(
-                "That member is not banned.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return
 
-    await unban_member(author_channel, target_member)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Member unbanned",
-            f"`{target_member.username}` has been unbanned from the lobby.",
-            bot_avatar_url,
-            timestamp=True,
-        )
+    unban_embed = utils.create_info_embed(
+        "Member unbanned",
+        f"`{target_member.username}` has been unbanned from the lobby.",
+        bot_avatar_url,
     )
+
+    await unban_member(author_channel, target_member)
+    await ctx.respond(embed=unban_embed)
 
 
 @lobby.set_error_handler()
@@ -1167,23 +1173,22 @@ async def channel_errors(event: lightbulb.CommandErrorEvent) -> bool:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if isinstance(exception, lightbulb.MissingRequiredPermission):
+        error_embed = utils.create_error_embed(
+            "You don't have permission to use this command.", bot_avatar_url
+        )
         await event.context.respond(
-            embed=utils.create_error_embed(
-                "You don't have permission to use this command.",
-                bot_avatar_url,
-                timestamp=True,
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return True
 
     elif isinstance(exception, lightbulb.BotMissingRequiredPermission):
+        error_embed = utils.create_error_embed(
+            "I am missing the permissions required to do that.",
+            bot_avatar_url,
+        )
         await event.context.respond(
-            embed=utils.create_error_embed(
-                "I am missing the permissions required to do that.",
-                bot_avatar_url,
-                timestamp=True,
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return True

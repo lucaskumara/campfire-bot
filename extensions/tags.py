@@ -74,6 +74,7 @@ async def paginate_all_tags(
         The constructed embed paginator.
     """
     paginator = EmbedPaginator(prefix="```", suffix="```", max_lines=10)
+    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     @paginator.embed_factory()
     def build_embed(index, content):
@@ -81,7 +82,7 @@ async def paginate_all_tags(
         embed = utils.create_info_embed(
             "Tag list",
             f"Here is a list of tags. Use `/tag show [tag]` to view its contents. {content}",
-            plugin.bot.get_me().avatar_url,
+            bot_avatar_url,
             True,
         )
         embed.set_footer(f"Page {index}")
@@ -269,12 +270,13 @@ async def show(ctx: lightbulb.SlashCommand) -> None:
     """
     tag_name = ctx.options.name.lower()
     tag_guild = ctx.get_guild()
+    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
+            "That tag does not exist.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -303,11 +305,12 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     tag_content = ctx.options.content
     tag_author = ctx.author
     tag_guild = ctx.get_guild()
+    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     # If there is already an existing tag
     if await get_tag(tag_name, tag_guild) is not None:
         error_embed = utils.create_error_embed(
-            "That tag already exists.", plugin.bot.get_me().avatar_url, timestamp=True
+            "That tag already exists.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -316,8 +319,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     if len(tag_name) > 54:
         error_embed = utils.create_error_embed(
             "The tag name must be less than 54 characters long.",
-            plugin.bot.get_me().avatar_url,
-            timestamp=True,
+            bot_avatar_url,
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -326,8 +328,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     if len(tag_content) > 2000:
         error_embed = utils.create_error_embed(
             "The tag content must be less than 2000 characters long.",
-            plugin.bot.get_me().avatar_url,
-            timestamp=True,
+            bot_avatar_url,
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -338,8 +339,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
             "Your tag has been successfully created. \n"
             f"Use `/tag show {tag_name}` to view it."
         ),
-        plugin.bot.get_me().avatar_url,
-        timestamp=True,
+        bot_avatar_url,
     )
 
     await create_tag(tag_name, tag_content, tag_author, tag_guild)
@@ -364,12 +364,13 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
     tag_name = ctx.options.name.lower()
     tag_author = ctx.author
     tag_guild = ctx.get_guild()
+    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
+            "That tag does not exist.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -380,9 +381,7 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
         and not permissions_for(tag_author) & hikari.Permissions.MANAGE_MESSAGES
     ):
         error_embed = utils.create_error_embed(
-            "You don't have permission to delete that tag.",
-            plugin.bot.get_me().avatar_url,
-            timestamp=True,
+            "You don't have permission to delete that tag.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -390,8 +389,7 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
     tag_deleted_embed = utils.create_info_embed(
         "Tag deleted",
         f"The tag `{tag_name}` has been successfully deleted.",
-        plugin.bot.get_me().avatar_url,
-        timestamp=True,
+        bot_avatar_url,
     )
 
     await delete_tag(tag_name, tag_guild)
@@ -418,12 +416,13 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
     tag_content = ctx.options.content
     tag_author = ctx.author
     tag_guild = ctx.get_guild()
+    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
+            "That tag does not exist.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -431,9 +430,7 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
     # If the author does not own the tag
     if tag_author.id != document["tags"]["author_id"]:
         error_embed = utils.create_error_embed(
-            "You don't have permission to edit that tag.",
-            plugin.bot.get_me().avatar_url,
-            timestamp=True,
+            "You don't have permission to edit that tag.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -441,8 +438,7 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
     tag_edited_embed = utils.create_info_embed(
         "Tag updated",
         f"The tag `{tag_name}` has been successfully updated.",
-        plugin.bot.get_me().avatar_url,
-        timestamp=True,
+        bot_avatar_url,
     )
 
     await edit_tag(tag_name, tag_content, tag_guild)
@@ -466,12 +462,13 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
     """
     tag_name = ctx.options.name.lower()
     tag_guild = ctx.get_guild()
+    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", plugin.bot.get_me().avatar_url, timestamp=True
+            "That tag does not exist.", bot_avatar_url
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -483,17 +480,13 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
     tag_uses = document["tags"]["uses"]
 
     tag_author = await plugin.bot.rest.fetch_user(tag_author_id)
-    tag_author_name = f"{tag_author.username}#{tag_author.discriminator}"
     tag_created_at = datetime.fromisoformat(tag_created_at_iso)
     tag_modified_at = datetime.fromisoformat(tag_modified_at_iso)
     tag_created_at_formatted = tag_created_at.strftime("%b %d, %Y")
     tag_modified_at_formatted = tag_modified_at.strftime("%b %d, %Y")
 
     info_embed = utils.create_info_embed(
-        "Tag info",
-        f"Use `/tag show {tag_name}` to view its contents.",
-        plugin.bot.get_me().avatar_url,
-        timestamp=True,
+        "Tag info", f"Use `/tag show {tag_name}` to view its contents.", bot_avatar_url
     )
 
     info_embed.add_field("Name", tag_name, inline=True)
@@ -525,13 +518,13 @@ async def list(ctx: lightbulb.SlashCommand) -> None:
     """
     tag_author = ctx.options.member
     tag_guild = ctx.get_guild()
+    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     # If there are no tags to display
     if not await guild_has_tags(tag_author, tag_guild):
         error_embed = utils.create_error_embed(
             "There are no tags to display.",
-            plugin.bot.get_me().avatar_url,
-            timestamp=True,
+            bot_avatar_url,
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return

@@ -54,20 +54,19 @@ async def profile(ctx: lightbulb.SlashContext) -> None:
     member_reputation = await get_reputation(member.id, ctx.guild_id)
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
-    embed = utils.create_info_embed(
+    profile_embed = utils.create_info_embed(
         f"{member_full_name}'s Profile",
         f"Here are some details about `{member_full_name}`",
         bot_avatar_url,
-        timestamp=True,
     )
 
-    embed.set_thumbnail(member.avatar_url or member.default_avatar_url)
-    embed.add_field("User ID", member.id, inline=True)
-    embed.add_field("Joined at", member_joined, inline=True)
-    embed.add_field("Created at", member_created, inline=True)
-    embed.add_field("Reputation", f"{member_reputation} points", inline=True)
+    profile_embed.set_thumbnail(member.avatar_url or member.default_avatar_url)
+    profile_embed.add_field("User ID", member.id, inline=True)
+    profile_embed.add_field("Joined at", member_joined, inline=True)
+    profile_embed.add_field("Created at", member_created, inline=True)
+    profile_embed.add_field("Reputation", f"{member_reputation} points", inline=True)
 
-    await ctx.respond(embed=embed)
+    await ctx.respond(embed=profile_embed)
 
 
 def load(bot: lightbulb.BotApp) -> None:

@@ -69,16 +69,14 @@ async def reputation(ctx: lightbulb.SlashContext) -> None:
     """
     target_member = ctx.options.member
     bot_avatar_url = plugin.bot.get_me().avatar_url
+    reputation_embed = utils.create_info_embed(
+        "Reputation given",
+        f"You have given a point of reputation to `{target_member.username}`",
+        bot_avatar_url,
+    )
 
     await give_reputation(target_member.id, ctx.guild_id)
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "Reputation given",
-            ("You have given a point of reputation to " f"`{target_member.username}`"),
-            bot_avatar_url,
-            timestamp=True,
-        )
-    )
+    await ctx.respond(embed=reputation_embed)
 
 
 @reputation.set_error_handler()
@@ -95,21 +93,21 @@ async def reputation_errors(event: lightbulb.CommandErrorEvent) -> bool:
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
     if isinstance(exception, lightbulb.CommandIsOnCooldown):
+        error_embed = utils.create_error_embed(
+            f"Try again in `{int(exception.retry_after)}` seconds.", bot_avatar_url
+        )
         await event.context.respond(
-            embed=utils.create_error_embed(
-                f"Try again in `{int(exception.retry_after)}` seconds.",
-                bot_avatar_url,
-                timestamp=True,
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return True
 
     elif isinstance(exception, lightbulb.CheckFailure):
+        error_embed = utils.create_error_embed(
+            "You can not give yourself reputation.", bot_avatar_url
+        )
         await event.context.respond(
-            embed=utils.create_error_embed(
-                "You can not give yourself reputation.", bot_avatar_url, timestamp=True
-            ),
+            embed=error_embed,
             delete_after=utils.DELETE_ERROR_DELAY,
         )
         return True

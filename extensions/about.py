@@ -25,15 +25,12 @@ async def about(ctx: lightbulb.SlashContext) -> None:
         "a discord server.\n\n"
     )
     links = "**Donate**: https://ko-fi.com/campfire\n" "**Support server**: COMING SOON"
-
-    await ctx.respond(
-        embed=utils.create_info_embed(
-            "About Campfire",
-            message + links,
-            plugin.bot.get_me().avatar_url,
-            timestamp=True,
-        )
+    bot_avatar_url = plugin.bot.get_me().avatar_url
+    about_embed = utils.create_info_embed(
+        "About Campfire", message + links, bot_avatar_url
     )
+
+    await ctx.respond(embed=about_embed)
 
 
 def load(bot: lightbulb.BotApp) -> None:
