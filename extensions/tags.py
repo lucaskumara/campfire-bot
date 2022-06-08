@@ -376,7 +376,7 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
 
     # If the author does not own or have the permissions to delete the tag
     if (
-        tag_author.id != document["author_id"]
+        tag_author.id != document["tags"]["author_id"]
         and not permissions_for(tag_author) & hikari.Permissions.MANAGE_MESSAGES
     ):
         error_embed = utils.create_error_embed(
