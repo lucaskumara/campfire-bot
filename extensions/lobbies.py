@@ -12,8 +12,9 @@ async def create_template(
 ) -> hikari.GuildVoiceChannel:
     """Creates a template channel and stores the channel data in the database.
 
-    Creates a new template channel with a specified name and stores both the
-    channel ID and guild ID in the database.
+    Creates a new voice channel and pushes its channel ID into the
+    guild document templates list if it exists. Otherwise, create a new guild
+    document with the templates list containing the template channel ID.
 
     Arguments:
         channel_name: The name of the template channel.
@@ -24,8 +25,10 @@ async def create_template(
     """
     template_channel = await channel_guild.create_voice_channel(channel_name)
 
-    await plugin.bot.database.lobby_templates.insert_one(
-        {"guild_id": template_channel.guild_id, "channel_id": template_channel.id}
+    await plugin.bot.database.lobby_channels.update_one(
+        {"guild_id": channel_guild.id},
+        {"$push": {"templates": template_channel.id}},
+        upsert=True,
     )
 
     return template_channel
@@ -36,9 +39,10 @@ async def create_clone(
 ) -> hikari.GuildVoiceChannel:
     """Creates a clone channel and stores the channel data in the database.
 
-    Clones an existing template channel and names the clone after the member
-    who joined the template channel. The channel ID, guild ID, template
-    channel ID and the owner ID are all stored in the database.
+    Clones a template voice channel and pushes its channel ID into the
+    guild document clones list if it exists. Otherwise, create a new guild
+    document with the clones list containing a document containing info about
+    the clone channel.
 
     Arguments:
         template_channel: The template channel to clone.
@@ -51,13 +55,18 @@ async def create_clone(
         template_channel, name=f"{owner.username}'s Lobby"
     )
 
-    await plugin.bot.database.lobby_clones.insert_one(
+    await plugin.bot.database.lobby_channels.update_one(
+        {"guild_id": clone_channel.guild_id},
         {
-            "guild_id": clone_channel.guild_id,
-            "channel_id": clone_channel.id,
-            "template_id": template_channel.id,
-            "owner_id": owner.id,
-        }
+            "$push": {
+                "clones": {
+                    "clone_id": clone_channel.id,
+                    "template_id": template_channel.id,
+                    "owner_id": owner.id,
+                }
+            }
+        },
+        upsert=True,
     )
 
     return clone_channel
@@ -72,23 +81,33 @@ async def get_clone_document(channel_id: hikari.Snowflake) -> hikari.GuildVoiceC
     Returns:
         The document of the channel.
     """
-    document = await plugin.bot.database.lobby_clones.find_one(
-        {"channel_id": channel_id}
+    cursor = plugin.bot.database.lobby_channels.aggregate(
+        [
+            {"$match": {"clones.clone_id": channel_id}},
+            {"$unwind": "$tags"},
+            {"$match": {"clones.clone_id": channel_id}},
+            {"$limit": 1},
+        ]
     )
-    return document
+    documents = await cursor.to_list(length=1)
+
+    if documents != []:
+        return documents[0]
+
+    return None
 
 
 async def valid_template(channel_id: hikari.Snowflake) -> bool:
     """Determines if the channel is a valid template channel.
 
     Arguments:
-        channel_id: The ID of the channel to check.
+        channel: The ID of the channel to check.
 
     Returns:
         True if the channel is a template, false if not.
     """
-    document = await plugin.bot.database.lobby_templates.find_one(
-        {"channel_id": channel_id}
+    document = await plugin.bot.database.lobby_channels.find_one(
+        {"templates": channel_id}
     )
     return document is not None
 
@@ -97,13 +116,13 @@ async def valid_clone(channel_id: hikari.Snowflake) -> bool:
     """Determines if the channel is a valid clone channel.
 
     Arguments:
-        channel_id: The ID of the channel to check.
+        channel: The clone channel.
 
     Returns:
         True if the channel is a clone, false if not.
     """
-    document = await plugin.bot.database.lobby_clones.find_one(
-        {"channel_id": channel_id}
+    document = await plugin.bot.database.lobby_channels.find_one(
+        {"clones.clone_id": channel_id}
     )
     return document is not None
 
@@ -121,8 +140,8 @@ async def enable_command(command_name: str, guild_id: hikari.Snowflake) -> None:
     Returns:
         None.
     """
-    await plugin.bot.database.lobby_disabled_commands.delete_one(
-        {"command_name": command_name, "guild_id": guild_id}
+    await plugin.bot.database.lobby_disabled_commands.update_one(
+        {"guild_id": guild_id}, {"$pull": {"disabled_commands": command_name}}
     )
 
 
@@ -139,8 +158,10 @@ async def disable_command(command_name: str, guild_id: hikari.Snowflake) -> None
     Returns:
         None.
     """
-    await plugin.bot.database.lobby_disabled_commands.insert_one(
-        {"command_name": command_name, "guild_id": guild_id}
+    await plugin.bot.database.lobby_disabled_commands.update_one(
+        {"guild_id": guild_id},
+        {"$push": {"disabled_commands": command_name}},
+        upsert=True,
     )
 
 
@@ -155,7 +176,7 @@ async def command_is_disabled(command_name: str, guild_id: hikari.Snowflake) -> 
         True if the command is disabled otherwise false.
     """
     document = await plugin.bot.database.lobby_disabled_commands.find_one(
-        {"command_name": command_name, "guild_id": guild_id}
+        {"guild_id": guild_id, "disabled_commands": command_name}
     )
     return document is not None
 
@@ -280,18 +301,6 @@ def lobby_is_locked(lobby: hikari.GuildVoiceChannel) -> bool:
     return False
 
 
-async def kick_member(member: hikari.Member) -> None:
-    """Kicks a member from their voice channel.
-
-    Arguments:
-        member: The member to kick.
-
-    Returns:
-        None.
-    """
-    await member.edit(voice_channel=None)
-
-
 async def ban_member(lobby: hikari.GuildVoiceChannel, member: hikari.Member) -> None:
     """Bans a member from a lobby.
 
@@ -397,18 +406,6 @@ def member_is_banned(lobby: hikari.GuildVoiceChannel, member: hikari.Member) -> 
     return False
 
 
-async def rename_lobby(lobby: hikari.GuildVoiceChannel, name: str) -> None:
-    """Renames a lobby.
-
-    Arguments:
-        lobby: The lobby to rename.
-
-    Returns:
-        None.
-    """
-    await lobby.edit(name=name)
-
-
 @plugin.listener(hikari.StartedEvent)
 async def clear_database(event: hikari.StartedEvent) -> None:
     """Clears any channels from the database that dont exist anymore.
@@ -422,28 +419,35 @@ async def clear_database(event: hikari.StartedEvent) -> None:
     Returns:
         None.
     """
-    template_cursor = plugin.bot.database.lobby_templates
-    clone_cursor = plugin.bot.database.lobby_clones
+    async for document in plugin.bot.database.lobby_channels.find({}):
+        template_ids = document.get("templates", [])
+        clone_documents = document.get("clones", [])
+        clone_ids = [clone["clone_id"] for clone in clone_documents]
 
-    async for document in template_cursor.find({}):
-        try:
-            await plugin.bot.rest.fetch_channel(document["channel_id"])
-        except hikari.NotFoundError:
-            await plugin.bot.database.lobby_templates.delete_one(
-                {
-                    "channel_id": document["channel_id"],
-                }
-            )
+        delete_templates = []
+        delete_clones = []
 
-    async for document in clone_cursor.find({}):
-        try:
-            await plugin.bot.rest.fetch_channel(document["channel_id"])
-        except hikari.NotFoundError:
-            await plugin.bot.database.lobby_clones.delete_one(
-                {
-                    "channel_id": document["channel_id"],
-                }
-            )
+        for id in template_ids:
+            try:
+                await plugin.bot.rest.fetch_channel(id)
+            except hikari.NotFoundError:
+                delete_templates.append(id)
+
+        for id in clone_ids:
+            try:
+                await plugin.bot.rest.fetch_channel(id)
+            except hikari.NotFoundError:
+                delete_clones.append(id)
+
+        guild_id = document["guild_id"]
+
+        await plugin.bot.database.lobby_channels.update_many(
+            {"guild_id": guild_id}, {"$pull": {"templates": {"$in": delete_templates}}}
+        )
+        await plugin.bot.database.lobby_channels.update_many(
+            {"guild_id": guild_id},
+            {"$pull": {"clones": {"clone_id": {"$in": delete_clones}}}},
+        )
 
 
 @plugin.listener(hikari.GuildChannelDeleteEvent)
@@ -461,11 +465,13 @@ async def on_channel_delete(event: hikari.GuildChannelDeleteEvent) -> None:
     if not isinstance(channel, hikari.GuildVoiceChannel):
         return
 
-    await plugin.bot.database.lobby_templates.delete_many(
-        {"guild_id": channel.guild_id, "channel_id": channel.id}
+    await plugin.bot.database.lobby_channels.update_many(
+        {"guild_id": channel.guild_id},
+        {"$pull": {"templates": channel.id}},
     )
-    await plugin.bot.database.lobby_clones.delete_many(
-        {"guild_id": channel.guild_id, "channel_id": channel.id}
+    await plugin.bot.database.lobby_channels.update_many(
+        {"guild_id": channel.guild_id},
+        {"$pull": {"clones": {"clone_id": channel.id}}},
     )
 
 
@@ -741,7 +747,7 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
             bot_avatar_url,
         )
 
-        await rename_lobby(lobby, clean_name)
+        await lobby.edit(name=clean_name)
         await ctx.respond(embed=rename_embed)
 
     except hikari.errors.RateLimitedError as error:
@@ -988,7 +994,7 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
         bot_avatar_url,
     )
 
-    await kick_member(target_member)
+    await target_member.edit(voice_channel=None)
     await ctx.respond(embed=kick_embed)
 
 
@@ -1067,7 +1073,7 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
         target_voice_state is not None
         and author_channel_id == target_voice_state.channel_id
     ):
-        await kick_member(target_member)
+        await target_member.edit(voice_channel=None)
 
     ban_embed = utils.create_info_embed(
         "Member banned",
