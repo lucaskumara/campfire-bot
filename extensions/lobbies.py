@@ -1,5 +1,6 @@
 import hikari
 import lightbulb
+import typing
 import utils
 
 CHOICES = ["rename", "lock", "unlock", "kick", "ban", "unban"]
@@ -72,19 +73,26 @@ async def create_clone(
     return clone_channel
 
 
-async def get_clone_document(channel_id: hikari.Snowflake) -> hikari.GuildVoiceChannel:
+async def get_clone_document(
+    channel_id: hikari.Snowflake,
+) -> typing.Optional[dict]:
     """Gets the clone channel document from the database.
 
+    Uses an aggregate to find documents containing the channel id (should be a
+    single document), unwinding clones and then matching to the unwound
+    document with the channel id (should also be a single document). Limits
+    the result to a single document just incase.
+
     Arguments:
-        channel_id: The id of the channel to get.
+        channel_id: The ID of the channel to get.
 
     Returns:
-        The document of the channel.
+        The document of the channel if it exists otherwise None.
     """
     cursor = plugin.bot.database.lobby_channels.aggregate(
         [
             {"$match": {"clones.clone_id": channel_id}},
-            {"$unwind": "$tags"},
+            {"$unwind": "$clones"},
             {"$match": {"clones.clone_id": channel_id}},
             {"$limit": 1},
         ]
@@ -100,6 +108,9 @@ async def get_clone_document(channel_id: hikari.Snowflake) -> hikari.GuildVoiceC
 async def valid_template(channel_id: hikari.Snowflake) -> bool:
     """Determines if the channel is a valid template channel.
 
+    Checks if there is a document that contains the channel id in its array of
+    templates.
+
     Arguments:
         channel: The ID of the channel to check.
 
@@ -114,6 +125,9 @@ async def valid_template(channel_id: hikari.Snowflake) -> bool:
 
 async def valid_clone(channel_id: hikari.Snowflake) -> bool:
     """Determines if the channel is a valid clone channel.
+
+    Checks if there is a document that contains the channel id in its array of
+    clone documents.
 
     Arguments:
         channel: The clone channel.
@@ -167,6 +181,9 @@ async def disable_command(command_name: str, guild_id: hikari.Snowflake) -> None
 
 async def command_is_disabled(command_name: str, guild_id: hikari.Snowflake) -> bool:
     """Checks if a command is disabled in a guild.
+
+    Checks if a command is disabled in a guild by checking if it is in the
+    guilds list of disabled commands.
 
     Arguments:
         command_name: The name of the command.
@@ -385,7 +402,7 @@ async def unban_member(lobby: hikari.GuildVoiceChannel, member: hikari.Member) -
     await lobby.edit(permission_overwrites=all_permissions)
 
 
-def member_is_banned(lobby: hikari.GuildVoiceChannel, member: hikari.Member) -> None:
+def member_is_banned(lobby: hikari.GuildVoiceChannel, member: hikari.Member) -> bool:
     """Checks if a channel is currently locked for everyone.
 
     Checks if a member is banned by checking if the channel has permissions
@@ -410,8 +427,9 @@ def member_is_banned(lobby: hikari.GuildVoiceChannel, member: hikari.Member) -> 
 async def clear_database(event: hikari.StartedEvent) -> None:
     """Clears any channels from the database that dont exist anymore.
 
-    Tries to fetch the channel. If the channel cannot be fetched, it does not
-    exist therefore delete instances of it from the database.
+    Tries to fetch all channels in the templates array and clone documents
+    array. If the channel cannot be fetched, delete its entry from its correct
+    spot in the database.
 
     Arguments:
         event: The event that was fired. (GuildChannelDeleteEvent)
@@ -716,7 +734,7 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["owner_id"] != author_member.id:
+    if document["clones"]["owner_id"] != author_member.id:
         error_embed = utils.create_error_embed(
             "You are not the owner of this lobby.", bot_avatar_url
         )
@@ -810,7 +828,7 @@ async def lock(ctx: lightbulb.SlashContext) -> None:
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["owner_id"] != author_member.id:
+    if document["clones"]["owner_id"] != author_member.id:
         error_embed = utils.create_error_embed(
             "You are not the owner of this lobby.", bot_avatar_url
         )
@@ -887,7 +905,7 @@ async def unlock(ctx: lightbulb.SlashContext) -> None:
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["owner_id"] != ctx.member.id:
+    if document["clones"]["owner_id"] != ctx.member.id:
         error_embed = utils.create_error_embed(
             "You are not the owner of this lobby.", bot_avatar_url
         )
@@ -965,7 +983,7 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["owner_id"] != author_member.id:
+    if document["clones"]["owner_id"] != author_member.id:
         error_embed = utils.create_error_embed(
             "You are not the owner of this lobby.", bot_avatar_url
         )
@@ -1045,7 +1063,7 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["owner_id"] != author_member.id:
+    if document["clones"]["owner_id"] != author_member.id:
         error_embed = utils.create_error_embed(
             "You are not the owner of this lobby.", bot_avatar_url
         )
@@ -1132,7 +1150,7 @@ async def unban(ctx: lightbulb.SlashContext) -> None:
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["owner_id"] != author_member.id:
+    if document["clones"]["owner_id"] != author_member.id:
         error_embed = utils.create_error_embed(
             "You are not the owner of this lobby.", bot_avatar_url
         )
