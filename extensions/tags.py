@@ -83,7 +83,6 @@ async def paginate_all_tags(
             "Tag list",
             f"Here is a list of tags. Use `/tag show [tag]` to view its contents. {content}",
             bot_avatar_url,
-            True,
         )
         embed.set_footer(f"Page {index}")
         return embed
@@ -95,8 +94,9 @@ async def paginate_all_tags(
         ]
     else:
         pipeline = [
-            {"$match": {"guild_id": tag_guild.id, "tags.author_id": tag_author.id}},
+            {"$match": {"guild_id": tag_guild.id}},
             {"$unwind": "$tags"},
+            {"$match": {"tags.author_id": tag_author.id}},
         ]
 
     async for document in plugin.bot.database.tags.aggregate(pipeline):
