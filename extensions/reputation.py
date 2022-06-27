@@ -2,44 +2,78 @@ import hikari
 import lightbulb
 import utils
 
-from lightbulb.buckets import GuildBucket
-
 plugin = lightbulb.Plugin("Reputation")
 
 
-async def give_reputation(
-    member_id: hikari.Snowflake, guild_id: hikari.Snowflake
-) -> None:
-    """Gives 1 reputation point to a member in a guild.
+async def get_upvotes(target_id: hikari.Snowflake) -> list:
+    """Gets a list of IDs for users who have upvoted the target."""
+    document = await plugin.bot.database.reputations.find_one({"member_id": target_id})
+    return document.get("upvotes", []) if document is not None else []
 
-    Checks the database for existing reputation and increments it if possible.
-    Otherwise, create a new document for the member in the guild with 1
-    reputation.
+
+async def get_downvotes(target_id: hikari.Snowflake) -> list:
+    """Gets a list of IDs for users who have downvoted the target."""
+    document = await plugin.bot.database.reputations.find_one({"member_id": target_id})
+    return document.get("downvotes", []) if document is not None else []
+
+
+async def upvote_member(
+    voter_id: hikari.Snowflake, target_id: hikari.Snowflake
+) -> None:
+    """Updates the database to show that the voter has upvoted the target.
+
+    Pulls the voter ID from the array of IDs for users who have downvoted the target and
+    pushes it to the array of users who have upvoted.
 
     Arguments:
-        member_id: The ID of the member to get the reputation
-        guild_id: The ID of the guild for the member to get the reputation in
+        voter_id: The ID of the voting users.
+        target_id: The ID of the user getting upvoted.
 
     Returns:
         None.
     """
-    document = await plugin.bot.database.reputations.find_one(
-        {"member_id": member_id, "guild_id": guild_id}
+    plugin.bot.database.reputations.update_one(
+        {"member_id": target_id},
+        {"$pull": {"downvotes": voter_id}},
     )
 
-    if document is None:
-        await plugin.bot.database.reputations.insert_one(
-            {"member_id": member_id, "guild_id": guild_id, "reputation": 1}
-        )
-    else:
-        await plugin.bot.database.reputations.update_one(
-            {"member_id": member_id, "guild_id": guild_id}, {"$inc": {"reputation": 1}}
-        )
+    plugin.bot.database.reputations.update_one(
+        {"member_id": target_id},
+        {"$push": {"upvotes": voter_id}},
+        upsert=True,
+    )
+
+
+async def downvote_member(
+    voter_id: hikari.Snowflake, target_id: hikari.Snowflake
+) -> None:
+    """Updates the database to show that the voter has downvoted the target.
+
+    Pulls the voter ID from the array of IDs for users who have upvoted the target and
+    pushes it to the array of users who have downvoted.
+
+    Arguments:
+        voter_id: The ID of the voting user.
+        target_id: The ID of the user getting downvoted.
+
+    Returns:
+        None.
+    """
+    plugin.bot.database.reputations.update_one(
+        {"member_id": target_id},
+        {"$pull": {"upvotes": voter_id}},
+    )
+
+    plugin.bot.database.reputations.update_one(
+        {"member_id": target_id},
+        {"$push": {"downvotes": voter_id}},
+        upsert=True,
+    )
 
 
 @lightbulb.Check
 def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
-    """A simple check to ensure that specified member is not the author.
+    """A check to ensure that the target member is not the command author.
 
     Arguments:
         ctx: The context for the command.
@@ -52,14 +86,13 @@ def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
 
 @plugin.command
 @lightbulb.add_checks(check_target_is_not_author)
-@lightbulb.add_cooldown(600, 1, GuildBucket)
-@lightbulb.option("member", "The member to give reputation to", type=hikari.Member)
-@lightbulb.command("reputation", "Grants a member a point of reputation")
+@lightbulb.option("member", "The member to upvote", type=hikari.OptionType.USER)
+@lightbulb.command("upvote", "Upvotes a member")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def reputation(ctx: lightbulb.SlashContext) -> None:
-    """Grants a member a point of reputation.
+async def upvote(ctx: lightbulb.SlashContext) -> None:
+    """Upvotes a member.
 
-    Called when a member uses /reputation <member>.
+    Called when a member uses /upvote [member].
 
     Arguments:
         ctx: The context for the command.
@@ -67,44 +100,83 @@ async def reputation(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     """
-    target_member = ctx.options.member
     bot_avatar_url = plugin.bot.get_me().avatar_url
-    reputation_embed = utils.create_info_embed(
-        "Reputation given",
-        f"You have given a point of reputation to `{target_member.username}`",
+    voter_member = ctx.member
+    target_member = ctx.options.member
+    target_member_upvotes = await get_upvotes(target_member.id)
+
+    # Check if target has already been upvoted by the author
+    if voter_member.id in target_member_upvotes:
+        error_embed = utils.create_error_embed(
+            "You have already upvoted that member", bot_avatar_url
+        )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
+        return
+
+    upvote_embed = utils.create_info_embed(
+        "Member upvoted", f"You have upvoted {target_member.mention}", bot_avatar_url
+    )
+
+    await upvote_member(voter_member.id, target_member.id)
+    await ctx.respond(embed=upvote_embed)
+
+
+@plugin.command
+@lightbulb.add_checks(check_target_is_not_author)
+@lightbulb.option("member", "The member to downvote", type=hikari.OptionType.USER)
+@lightbulb.command("downvote", "Downvotes a member")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def downvote(ctx: lightbulb.SlashContext) -> None:
+    """Downvotes a member.
+
+    Called when a member uses /downvote [member].
+
+    Arguments:
+        ctx: The context for the command.
+
+    Returns:
+        None.
+    """
+    bot_avatar_url = plugin.bot.get_me().avatar_url
+    voter_member = ctx.member
+    target_member = ctx.options.member
+    target_member_downvotes = await get_downvotes(target_member.id)
+
+    # Check if target has already been downvoted by the author
+    if voter_member.id in target_member_downvotes:
+        error_embed = utils.create_error_embed(
+            "You have already downvoted that member", bot_avatar_url
+        )
+        await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
+        return
+
+    downvote_embed = utils.create_info_embed(
+        "Member downvoted",
+        f"You have downvoted {target_member.mention}",
         bot_avatar_url,
     )
 
-    await give_reputation(target_member.id, ctx.guild_id)
-    await ctx.respond(embed=reputation_embed)
+    await downvote_member(voter_member.id, target_member.id)
+    await ctx.respond(embed=downvote_embed)
 
 
-@reputation.set_error_handler()
-async def reputation_errors(event: lightbulb.CommandErrorEvent) -> bool:
-    """Handles errors for the reputation command.
+@upvote.set_error_handler()
+@downvote.set_error_handler()
+async def voting_errors(event: lightbulb.CommandErrorEvent) -> bool:
+    """Handles errors for the upvote and downvote commands.
 
     Arguments:
-        event: The event that was fired. (CommandErrorEvent)
+        event: The event that was fired.
 
     Returns:
         True if the exception can be handled, false if not.
     """
-    exception = event.exception
     bot_avatar_url = plugin.bot.get_me().avatar_url
+    exception = event.exception
 
-    if isinstance(exception, lightbulb.CommandIsOnCooldown):
+    if isinstance(exception, lightbulb.CheckFailure):
         error_embed = utils.create_error_embed(
-            f"Try again in `{int(exception.retry_after)}` seconds.", bot_avatar_url
-        )
-        await event.context.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
-        return True
-
-    elif isinstance(exception, lightbulb.CheckFailure):
-        error_embed = utils.create_error_embed(
-            "You can not give yourself reputation.", bot_avatar_url
+            "You can not vote for yourself.", bot_avatar_url
         )
         await event.context.respond(
             embed=error_embed,

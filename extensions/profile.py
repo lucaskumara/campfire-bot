@@ -5,34 +5,34 @@ import utils
 plugin = lightbulb.Plugin("Profile")
 
 
-async def get_reputation(
-    member_id: hikari.Snowflake, guild_id: hikari.Snowflake
-) -> int:
+async def get_reputation(member_id: hikari.Snowflake) -> tuple:
     """Gets a members reputation from the database.
 
-    Tries to pull the members reputation document from the database. If there
-    is a document, return the members reputation. Otherwise, return 0
+    Tries to pull the members reputation document from the database. If there is a
+    document, return the members reputation. Otherwise, return 0.
 
     Arguments:
-        member_id: The ID of the member to get the reputation
-        guild_id: The ID of the guild for the member to get the reputation in
+        member_id: The ID of the member whos member to get.
 
     Returns:
         The members reputation.
     """
-    document = await plugin.bot.database.reputations.find_one(
-        {"member_id": member_id, "guild_id": guild_id}
-    )
+    document = await plugin.bot.database.reputations.find_one({"member_id": member_id})
 
     if document is None:
-        return 0
+        return (0, 0)
     else:
-        return document["reputation"]
+        upvotes = len(document.get("upvotes", []))
+        downvotes = len(document.get("downvotes", []))
+        return (upvotes, downvotes)
 
 
 @plugin.command
 @lightbulb.option(
-    "member", "The member to see the profile of", type=hikari.Member, required=False
+    "member",
+    "The member to see the profile of",
+    type=hikari.OptionType.USER,
+    required=False,
 )
 @lightbulb.command("profile", "Displays information about the member")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -47,12 +47,18 @@ async def profile(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     """
+    bot_avatar_url = plugin.bot.get_me().avatar_url
     member = ctx.options.member or ctx.member
     member_full_name = f"{member.username}#{member.discriminator}"
     member_joined = member.joined_at.strftime("%b %d, %Y")
     member_created = member.created_at.strftime("%b %d, %Y")
-    member_reputation = await get_reputation(member.id, ctx.guild_id)
-    bot_avatar_url = plugin.bot.get_me().avatar_url
+    member_upvotes, member_downvotes = await get_reputation(member.id)
+    member_reputation = member_upvotes - member_downvotes
+
+    if member_reputation > 0:
+        member_reputation = f"+{member_reputation}"
+    elif member_reputation == 0:
+        member_reputation = "-"
 
     profile_embed = utils.create_info_embed(
         f"{member_full_name}'s Profile",
@@ -64,7 +70,9 @@ async def profile(ctx: lightbulb.SlashContext) -> None:
     profile_embed.add_field("User ID", member.id, inline=True)
     profile_embed.add_field("Joined at", member_joined, inline=True)
     profile_embed.add_field("Created at", member_created, inline=True)
-    profile_embed.add_field("Reputation", f"{member_reputation} points", inline=True)
+    profile_embed.add_field("Reputation", f"{member_reputation}", inline=True)
+    profile_embed.add_field("Upvotes", f"{member_upvotes}", inline=True)
+    profile_embed.add_field("Downvotes", f"{member_downvotes}", inline=True)
 
     await ctx.respond(embed=profile_embed)
 
