@@ -14,33 +14,27 @@ Upon cloning the repository, you will need to create a `config.ini` file and ins
 
 ### Config File
 
-The config file will have two sections, `[PRODUCTION]` and `[DEVELOPMENT]`.
+The config file can have two sections, `[BOT]` and `[OPTIONAL]`.
 
-If you intend on running the bot without modification, you only need to implement the production section.
+The `[BOT]` section contains values that are critical to the operation of the application. The `[OPTIONAL]` section contains additional values that are not required for operation but can modify the way the application is run.
 
 ```ini
-[PRODUCTION]
-TOKEN=... # Production Discord Application Token
-DATABASE_URI=... # MongoDB Production Database URL
+[BOT]
+TOKEN=... # Discord Application Token
+DATABASE_URI=... # MongoDB Database URL
 
-[DEVELOPMENT]
-TOKEN=... # Development Discord Application Token
-GUILD=... # Development Discord Server ID
-DATABASE_URI=... # MongoDB Development Database URL
+[OPTIONAL]
+GUILDS=[..., ...] # Development Discord Server IDs
 ```
 
 Application tokens can be obtained at https://discord.com/developers/
 
 ### Running the bot
 
-Below are instructions for running your bot depending on whether you want to run your production or development application. This should only be done after installing dependencies and creating your `config.ini` file.
+To run the bot, simply run the `bot.py` file. Please note this should only be done after installing dependencies and creating your `config.ini` file.
 
 ```bash
-# Production
-python3 bot.py
-
-# Development
-python3 bot.py -d
+$ python3 bot.py
 ```
 
 ## Planned Features
