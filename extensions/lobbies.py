@@ -1188,7 +1188,7 @@ async def channel_errors(event: lightbulb.CommandErrorEvent) -> bool:
     """Handles errors for the lobby command and its various subcommands.
 
     Arguments:
-        event: The event that was fired. (CommandErrorEvent)
+        event: The event that was fired.
 
     Returns:
         True if the exception can be handled, false if not.
