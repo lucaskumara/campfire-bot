@@ -7,13 +7,13 @@ plugin = lightbulb.Plugin("Reputation")
 
 async def get_upvotes(target_id: hikari.Snowflake) -> list:
     """Gets a list of IDs for users who have upvoted the target."""
-    document = await plugin.bot.database.reputations.find_one({"member_id": target_id})
+    document = await plugin.bot.d.db_conn.reputations.find_one({"member_id": target_id})
     return document.get("upvotes", []) if document is not None else []
 
 
 async def get_downvotes(target_id: hikari.Snowflake) -> list:
     """Gets a list of IDs for users who have downvoted the target."""
-    document = await plugin.bot.database.reputations.find_one({"member_id": target_id})
+    document = await plugin.bot.d.db_conn.reputations.find_one({"member_id": target_id})
     return document.get("downvotes", []) if document is not None else []
 
 
@@ -32,12 +32,12 @@ async def upvote_member(
     Returns:
         None.
     """
-    plugin.bot.database.reputations.update_one(
+    plugin.bot.d.db_conn.reputations.update_one(
         {"member_id": target_id},
         {"$pull": {"downvotes": voter_id}},
     )
 
-    plugin.bot.database.reputations.update_one(
+    plugin.bot.d.db_conn.reputations.update_one(
         {"member_id": target_id},
         {"$push": {"upvotes": voter_id}},
         upsert=True,
@@ -59,12 +59,12 @@ async def downvote_member(
     Returns:
         None.
     """
-    plugin.bot.database.reputations.update_one(
+    plugin.bot.d.db_conn.reputations.update_one(
         {"member_id": target_id},
         {"$pull": {"upvotes": voter_id}},
     )
 
-    plugin.bot.database.reputations.update_one(
+    plugin.bot.d.db_conn.reputations.update_one(
         {"member_id": target_id},
         {"$push": {"downvotes": voter_id}},
         upsert=True,

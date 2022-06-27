@@ -34,7 +34,7 @@ async def guild_has_tags(
         True if the query retrieved at least one document, false if otherwise.
     """
     if tag_author is None:
-        cursor = plugin.bot.database.tags.aggregate(
+        cursor = plugin.bot.d.db_conn.tags.aggregate(
             [
                 {"$match": {"guild_id": tag_guild.id}},
                 {"$unwind": "$tags"},
@@ -42,7 +42,7 @@ async def guild_has_tags(
             ]
         )
     else:
-        cursor = plugin.bot.database.tags.aggregate(
+        cursor = plugin.bot.d.db_conn.tags.aggregate(
             [
                 {"$match": {"guild_id": tag_guild.id}},
                 {"$unwind": "$tags"},
@@ -99,7 +99,7 @@ async def paginate_all_tags(
             {"$match": {"tags.author_id": tag_author.id}},
         ]
 
-    async for document in plugin.bot.database.tags.aggregate(pipeline):
+    async for document in plugin.bot.d.db_conn.tags.aggregate(pipeline):
         tag_name = document["tags"]["name"]
         paginator.add_line(f"• {tag_name}")
 
@@ -120,7 +120,7 @@ async def get_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> dict:
     Returns:
         The document of the tag if it exists, otherwise None.
     """
-    cursor = plugin.bot.database.tags.aggregate(
+    cursor = plugin.bot.d.db_conn.tags.aggregate(
         [
             {"$match": {"guild_id": tag_guild.id}},
             {"$unwind": "$tags"},
@@ -159,7 +159,7 @@ async def create_tag(
     """
     creation_time = datetime.now(timezone.utc).isoformat()
 
-    await plugin.bot.database.tags.update_one(
+    await plugin.bot.d.db_conn.tags.update_one(
         {"guild_id": tag_guild.id},
         {
             "$push": {
@@ -190,7 +190,7 @@ async def delete_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
     Returns:
         None.
     """
-    await plugin.bot.database.tags.update_one(
+    await plugin.bot.d.db_conn.tags.update_one(
         {"guild_id": tag_guild.id}, {"$pull": {"tags": {"name": tag_name}}}
     )
 
@@ -214,7 +214,7 @@ async def edit_tag(
     """
     edit_time = datetime.now(timezone.utc).isoformat()
 
-    await plugin.bot.database.tags.update_one(
+    await plugin.bot.d.db_conn.tags.update_one(
         {"guild_id": tag_guild.id, "tags.name": tag_name},
         {"$set": {"tags.$.content": tag_content, "tags.$.modified_at": edit_time}},
     )
@@ -233,7 +233,7 @@ async def increment_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
     Returns:
         None.
     """
-    await plugin.bot.database.tags.update_one(
+    await plugin.bot.d.db_conn.tags.update_one(
         {"guild_id": tag_guild.id, "tags.name": tag_name}, {"$inc": {"tags.$.uses": 1}}
     )
 

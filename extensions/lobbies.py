@@ -26,7 +26,7 @@ async def create_template(
     """
     template_channel = await channel_guild.create_voice_channel(channel_name)
 
-    await plugin.bot.database.lobby_channels.update_one(
+    await plugin.bot.d.db_conn.lobby_channels.update_one(
         {"guild_id": channel_guild.id},
         {"$push": {"templates": template_channel.id}},
         upsert=True,
@@ -56,7 +56,7 @@ async def create_clone(
         template_channel, name=f"{owner.username}'s Lobby"
     )
 
-    await plugin.bot.database.lobby_channels.update_one(
+    await plugin.bot.d.db_conn.lobby_channels.update_one(
         {"guild_id": clone_channel.guild_id},
         {
             "$push": {
@@ -89,7 +89,7 @@ async def get_clone_document(
     Returns:
         The document of the channel if it exists otherwise None.
     """
-    cursor = plugin.bot.database.lobby_channels.aggregate(
+    cursor = plugin.bot.d.db_conn.lobby_channels.aggregate(
         [
             {"$match": {"clones.clone_id": channel_id}},
             {"$unwind": "$clones"},
@@ -117,7 +117,7 @@ async def valid_template(channel_id: hikari.Snowflake) -> bool:
     Returns:
         True if the channel is a template, false if not.
     """
-    document = await plugin.bot.database.lobby_channels.find_one(
+    document = await plugin.bot.d.db_conn.lobby_channels.find_one(
         {"templates": channel_id}
     )
     return document is not None
@@ -135,7 +135,7 @@ async def valid_clone(channel_id: hikari.Snowflake) -> bool:
     Returns:
         True if the channel is a clone, false if not.
     """
-    document = await plugin.bot.database.lobby_channels.find_one(
+    document = await plugin.bot.d.db_conn.lobby_channels.find_one(
         {"clones.clone_id": channel_id}
     )
     return document is not None
@@ -154,7 +154,7 @@ async def enable_command(command_name: str, guild_id: hikari.Snowflake) -> None:
     Returns:
         None.
     """
-    await plugin.bot.database.lobby_disabled_commands.update_one(
+    await plugin.bot.d.db_conn.lobby_disabled_commands.update_one(
         {"guild_id": guild_id}, {"$pull": {"disabled_commands": command_name}}
     )
 
@@ -172,7 +172,7 @@ async def disable_command(command_name: str, guild_id: hikari.Snowflake) -> None
     Returns:
         None.
     """
-    await plugin.bot.database.lobby_disabled_commands.update_one(
+    await plugin.bot.d.db_conn.lobby_disabled_commands.update_one(
         {"guild_id": guild_id},
         {"$push": {"disabled_commands": command_name}},
         upsert=True,
@@ -192,7 +192,7 @@ async def command_is_disabled(command_name: str, guild_id: hikari.Snowflake) -> 
     Returns:
         True if the command is disabled otherwise false.
     """
-    document = await plugin.bot.database.lobby_disabled_commands.find_one(
+    document = await plugin.bot.d.db_conn.lobby_disabled_commands.find_one(
         {"guild_id": guild_id, "disabled_commands": command_name}
     )
     return document is not None
@@ -432,12 +432,12 @@ async def clear_database(event: hikari.StartedEvent) -> None:
     spot in the database.
 
     Arguments:
-        event: The event that was fired. (GuildChannelDeleteEvent)
+        event: The event that was fired.
 
     Returns:
         None.
     """
-    async for document in plugin.bot.database.lobby_channels.find({}):
+    async for document in plugin.bot.d.db_conn.lobby_channels.find({}):
         template_ids = document.get("templates", [])
         clone_documents = document.get("clones", [])
         clone_ids = [clone["clone_id"] for clone in clone_documents]
@@ -459,10 +459,10 @@ async def clear_database(event: hikari.StartedEvent) -> None:
 
         guild_id = document["guild_id"]
 
-        await plugin.bot.database.lobby_channels.update_many(
+        await plugin.bot.d.db_conn.lobby_channels.update_many(
             {"guild_id": guild_id}, {"$pull": {"templates": {"$in": delete_templates}}}
         )
-        await plugin.bot.database.lobby_channels.update_many(
+        await plugin.bot.d.db_conn.lobby_channels.update_many(
             {"guild_id": guild_id},
             {"$pull": {"clones": {"clone_id": {"$in": delete_clones}}}},
         )
@@ -473,7 +473,7 @@ async def on_channel_delete(event: hikari.GuildChannelDeleteEvent) -> None:
     """Deletes template/clone channels from collections if manually deleted.
 
     Arguments:
-        event: The event that was fired. (GuildChannelDeleteEvent)
+        event: The event that was fired.
 
     Returns:
         None.
@@ -483,11 +483,11 @@ async def on_channel_delete(event: hikari.GuildChannelDeleteEvent) -> None:
     if not isinstance(channel, hikari.GuildVoiceChannel):
         return
 
-    await plugin.bot.database.lobby_channels.update_many(
+    await plugin.bot.d.db_conn.lobby_channels.update_many(
         {"guild_id": channel.guild_id},
         {"$pull": {"templates": channel.id}},
     )
-    await plugin.bot.database.lobby_channels.update_many(
+    await plugin.bot.d.db_conn.lobby_channels.update_many(
         {"guild_id": channel.guild_id},
         {"$pull": {"clones": {"clone_id": channel.id}}},
     )
@@ -501,7 +501,7 @@ async def on_join_template(event: hikari.VoiceStateUpdateEvent) -> None:
     them to the clone.
 
     Arguments:
-        event: The event that was fired. (VoiceStateUpdateEvent)
+        event: The event that was fired.
 
     Returns:
         None.
@@ -530,7 +530,7 @@ async def on_leave_clone(event: hikari.VoiceStateUpdateEvent) -> None:
     members left in it and deletes the channel if so.
 
     Arguments:
-        event: The event that was fired. (VoiceStateUpdateEvent)
+        event: The event that was fired.
 
     Returns:
         None.

@@ -17,7 +17,7 @@ async def get_reputation(member_id: hikari.Snowflake) -> tuple:
     Returns:
         The members reputation.
     """
-    document = await plugin.bot.database.reputations.find_one({"member_id": member_id})
+    document = await plugin.bot.d.db_conn.reputations.find_one({"member_id": member_id})
 
     if document is None:
         return (0, 0)

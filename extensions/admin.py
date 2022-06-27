@@ -12,15 +12,13 @@ async def open_database_connection(event: hikari.StartingEvent) -> None:
     """Create a database connection when the bot is starting.
 
     Arguments:
-        event: The event that was fired. (StartingEvent)
+        event: The event that was fired.
 
     Returns:
         None.
     """
-    plugin.bot.database_client = AsyncIOMotorClient(
-        config.get("DEVELOPMENT", "DATABASE_URI")
-    )
-    plugin.bot.database = plugin.bot.database_client["campfire"]
+    plugin.bot.d.db_client = AsyncIOMotorClient(config.get("BOT", "DATABASE_URI"))
+    plugin.bot.d.db_conn = plugin.bot.d.db_client["campfire"]
 
 
 @plugin.listener(hikari.StoppingEvent)
@@ -28,12 +26,12 @@ async def close_database_connection(event: hikari.StoppingEvent) -> None:
     """Close the database connection when the bot stops.
 
     Arguments:
-        event: The event that was fired. (StoppingEvent)
+        event: The event that was fired.
 
     Returns:
         None.
     """
-    plugin.bot.database_client.close()
+    plugin.bot.d.db_client.close()
 
 
 def load(bot: lightbulb.BotApp) -> None:
