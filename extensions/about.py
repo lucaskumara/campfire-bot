@@ -20,10 +20,9 @@ async def about(ctx: lightbulb.SlashContext) -> None:
     """
     bot_avatar_url = plugin.bot.get_me().avatar_url
     message = (
-        "Campfire is a utility discord bot that began development in "
-        "November 2021. The goal of the project was to provide users "
-        "with an expanded set of features available to them when using "
-        "a discord server.\n\n"
+        "Campfire is a utility discord bot that began development in November 2021. "
+        "The goal of the project was to provide users with an expanded set of features "
+        "available to them when using a discord server.\n\n"
     )
     links = "**Donate**: https://ko-fi.com/campfire\n" "**Support server**: COMING SOON"
 
