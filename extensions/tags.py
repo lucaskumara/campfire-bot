@@ -238,6 +238,40 @@ async def increment_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
     )
 
 
+@plugin.listener(hikari.StartedEvent)
+async def purge_guild_documents(event: hikari.StartedEvent) -> None:
+    """Removes data of any guild the bot is no longer a part of.
+
+    Arguments:
+        event: The event that was fired.
+
+    Returns:
+        None.
+    """
+    tags_cursor = plugin.bot.d.db_conn.tags
+
+    async for document in tags_cursor.find({}):
+        guild_id = document["guild_id"]
+
+        try:
+            await plugin.bot.rest.fetch_guild(guild_id)
+        except:
+            await tags_cursor.delete_one({"guild_id": guild_id})
+
+
+@plugin.listener(hikari.GuildLeaveEvent)
+async def delete_guild_document(event: hikari.GuildLeaveEvent) -> None:
+    """Deletes guild document from the database when the bot leaves a guild.
+
+    Arguments:
+        event: The event that was fired.
+
+    Returns:
+        None.
+    """
+    await plugin.bot.d.db_conn.tags.delete_one({"guild_id": event.guild_id})
+
+
 @plugin.command
 @lightbulb.command("tag", "Base of tag command group")
 @lightbulb.implements(lightbulb.SlashCommandGroup)

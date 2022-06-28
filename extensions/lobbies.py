@@ -437,7 +437,9 @@ async def clear_database(event: hikari.StartedEvent) -> None:
     Returns:
         None.
     """
-    async for document in plugin.bot.d.db_conn.lobby_channels.find({}):
+    channel_cursor = plugin.bot.d.db_conn.lobby_channels
+
+    async for document in channel_cursor.find({}):
         template_ids = document.get("templates", [])
         clone_documents = document.get("clones", [])
         clone_ids = [clone["clone_id"] for clone in clone_documents]
@@ -448,24 +450,70 @@ async def clear_database(event: hikari.StartedEvent) -> None:
         for id in template_ids:
             try:
                 await plugin.bot.rest.fetch_channel(id)
-            except hikari.NotFoundError:
+            except:
                 delete_templates.append(id)
 
         for id in clone_ids:
             try:
                 await plugin.bot.rest.fetch_channel(id)
-            except hikari.NotFoundError:
+            except:
                 delete_clones.append(id)
 
         guild_id = document["guild_id"]
 
-        await plugin.bot.d.db_conn.lobby_channels.update_many(
+        await channel_cursor.update_many(
             {"guild_id": guild_id}, {"$pull": {"templates": {"$in": delete_templates}}}
         )
-        await plugin.bot.d.db_conn.lobby_channels.update_many(
+        await channel_cursor.update_many(
             {"guild_id": guild_id},
             {"$pull": {"clones": {"clone_id": {"$in": delete_clones}}}},
         )
+
+
+@plugin.listener(hikari.StartedEvent)
+async def purge_guild_documents(event: hikari.StartedEvent) -> None:
+    """Removes data of any guild the bot is no longer a part of.
+
+    Arguments:
+        event: The event that was fired.
+
+    Returns:
+        None.
+    """
+    channel_cursor = plugin.bot.d.db_conn.lobby_channels
+    disabled_command_cursor = plugin.bot.d.db_conn.lobby_disabled_commands
+
+    async for document in channel_cursor.find({}):
+        guild_id = document["guild_id"]
+
+        try:
+            await plugin.bot.rest.fetch_guild(guild_id)
+        except:
+            await channel_cursor.delete_one({"guild_id": guild_id})
+
+    async for document in disabled_command_cursor.find({}):
+        guild_id = document["guild_id"]
+
+        try:
+            await plugin.bot.rest.fetch_guild(guild_id)
+        except:
+            await disabled_command_cursor.delete_one({"guild_id": guild_id})
+
+
+@plugin.listener(hikari.GuildLeaveEvent)
+async def delete_guild_document(event: hikari.GuildLeaveEvent) -> None:
+    """Deletes guild document from the database when the bot leaves a guild.
+
+    Arguments:
+        event: The event that was fired.
+
+    Returns:
+        None.
+    """
+    db_filter = {"guild_id": event.guild_id}
+
+    await plugin.bot.d.db_conn.lobby_channels.delete_one(db_filter)
+    await plugin.bot.d.db_conn.lobby_disabled_commands.delete_one(db_filter)
 
 
 @plugin.listener(hikari.GuildChannelDeleteEvent)
