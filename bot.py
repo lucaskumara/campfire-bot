@@ -1,3 +1,4 @@
+import hikari
 import lightbulb
 import configparser
 import json
@@ -16,4 +17,9 @@ if __name__ == "__main__":
     )
 
     bot.load_extensions_from("./extensions")
-    bot.run()
+    bot.run(
+        activity=hikari.Activity(
+            name="over your servers!", type=hikari.ActivityType.WATCHING
+        ),
+        status=hikari.Status.IDLE,
+    )
