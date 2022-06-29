@@ -1,5 +1,6 @@
 import hikari
 import lightbulb
+import utils
 
 from bot import config
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -32,6 +33,32 @@ async def close_database_connection(event: hikari.StoppingEvent) -> None:
         None.
     """
     plugin.bot.d.db_client.close()
+
+
+@plugin.listener(lightbulb.CommandErrorEvent)
+async def on_command_error(event: lightbulb.CommandErrorEvent) -> None:
+    """Handles bot command errors if they aren't handled by plugin/command handlers.
+
+    Arguments:
+        event: The event that was fired.
+
+    Returns:
+        True if the exception can be handled, false if not.
+    """
+    bot_avatar_url = plugin.bot.get_me().avatar_url
+    exception = event.exception
+
+    if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
+        error_embed = utils.create_error_embed(
+            "You cannot use this command in DMs.", bot_avatar_url
+        )
+        await event.context.respond(
+            embed=error_embed,
+            delete_after=utils.DELETE_ERROR_DELAY,
+        )
+        return True
+
+    return False
 
 
 def load(bot: lightbulb.BotApp) -> None:
