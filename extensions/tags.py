@@ -273,6 +273,7 @@ async def delete_guild_document(event: hikari.GuildLeaveEvent) -> None:
 
 
 @plugin.command
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.command("tag", "Base of tag command group")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def tag(ctx: lightbulb.SlashContext) -> None:
@@ -289,7 +290,7 @@ async def tag(ctx: lightbulb.SlashContext) -> None:
 
 @tag.child
 @lightbulb.option("name", "The name of the tag")
-@lightbulb.command("show", "Shows the content of a tag")
+@lightbulb.command("show", "Shows the content of a tag", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def show(ctx: lightbulb.SlashCommand) -> None:
     """Displays a tag in the guild.
@@ -322,7 +323,7 @@ async def show(ctx: lightbulb.SlashCommand) -> None:
 @tag.child
 @lightbulb.option("content", "The content of the tag")
 @lightbulb.option("name", "The name of the tag")
-@lightbulb.command("create", "Creates a new tag")
+@lightbulb.command("create", "Creates a new tag", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def create(ctx: lightbulb.SlashContext) -> None:
     """Creates a new tag in the guild.
@@ -382,7 +383,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
 
 @tag.child
 @lightbulb.option("name", "The name of tag")
-@lightbulb.command("delete", "Deletes an existing tag")
+@lightbulb.command("delete", "Deletes an existing tag", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def delete(ctx: lightbulb.SlashContext) -> None:
     """Deletes an existing tag from the guild.
@@ -433,7 +434,7 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
 @tag.child
 @lightbulb.option("content", "The content of the tag")
 @lightbulb.option("name", "The name of the tag")
-@lightbulb.command("edit", "Edits an existing tag")
+@lightbulb.command("edit", "Edits an existing tag", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def edit(ctx: lightbulb.SlashCommand) -> None:
     """Edits the content of a tag in the guild.
@@ -481,7 +482,7 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
 
 @tag.child
 @lightbulb.option("name", "The name of the tag")
-@lightbulb.command("info", "Shows info about an existing tag")
+@lightbulb.command("info", "Shows info about an existing tag", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def info(ctx: lightbulb.SlashCommand) -> None:
     """Shows information about a tag in the guild.
@@ -537,7 +538,7 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
 @lightbulb.option(
     "member", "The owner of the tags to view", type=hikari.Member, required=False
 )
-@lightbulb.command("list", "Lists all server tags")
+@lightbulb.command("list", "Lists all server tags", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def list(ctx: lightbulb.SlashCommand) -> None:
     """Lists all tags in the guild.

@@ -612,6 +612,7 @@ async def on_leave_clone(event: hikari.VoiceStateUpdateEvent) -> None:
 @lightbulb.add_checks(
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
+    lightbulb.guild_only,
 )
 @lightbulb.command("lobby", "Base of lobby command group")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
@@ -654,7 +655,10 @@ async def create(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR))
+@lightbulb.add_checks(
+    lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR),
+    lightbulb.guild_only,
+)
 @lightbulb.option("command", "The command to enable", choices=CHOICES)
 @lightbulb.command("enable", "Enables the usage of a lobby command")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -695,7 +699,10 @@ async def enable(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR))
+@lightbulb.add_checks(
+    lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR),
+    lightbulb.guild_only,
+)
 @lightbulb.option("command", "The command to disable", choices=CHOICES)
 @lightbulb.command("disable", "Disables the usage of a lobby command")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -736,6 +743,7 @@ async def disable(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("name", "The new lobby name")
 @lightbulb.command("rename", "Renames the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -831,6 +839,7 @@ async def rename(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.command("lock", "Prevents new members from joining the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def lock(ctx: lightbulb.SlashContext) -> None:
@@ -908,6 +917,7 @@ async def lock(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.command("unlock", "Allows new members to join the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def unlock(ctx: lightbulb.SlashContext) -> None:
@@ -985,6 +995,7 @@ async def unlock(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("member", "The member to kick", type=hikari.Member)
 @lightbulb.command("kick", "Kicks a member from the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -1065,6 +1076,7 @@ async def kick(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("member", "The member to ban", type=hikari.Member)
 @lightbulb.command("ban", "Bans a member from the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -1152,6 +1164,7 @@ async def ban(ctx: lightbulb.SlashContext) -> None:
 
 
 @lobby.child
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("member", "The member to unban", type=hikari.Member)
 @lightbulb.command("unban", "Unbans a member from the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -1244,7 +1257,10 @@ async def channel_errors(event: lightbulb.CommandErrorEvent) -> bool:
     exception = event.exception
     bot_avatar_url = plugin.bot.get_me().avatar_url
 
-    if isinstance(exception, lightbulb.MissingRequiredPermission):
+    if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
+        return False
+
+    elif utils.evaluate_exception(exception, lightbulb.MissingRequiredPermission):
         error_embed = utils.create_error_embed(
             "You don't have permission to use this command.", bot_avatar_url
         )
@@ -1254,7 +1270,7 @@ async def channel_errors(event: lightbulb.CommandErrorEvent) -> bool:
         )
         return True
 
-    elif isinstance(exception, lightbulb.BotMissingRequiredPermission):
+    elif utils.evaluate_exception(exception, lightbulb.BotMissingRequiredPermission):
         error_embed = utils.create_error_embed(
             "I am missing the permissions required to do that.",
             bot_avatar_url,

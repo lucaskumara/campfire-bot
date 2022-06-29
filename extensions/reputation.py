@@ -85,7 +85,7 @@ def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
 
 
 @plugin.command
-@lightbulb.add_checks(check_target_is_not_author)
+@lightbulb.add_checks(check_target_is_not_author, lightbulb.guild_only)
 @lightbulb.option("member", "The member to upvote", type=hikari.OptionType.USER)
 @lightbulb.command("upvote", "Upvotes a member")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -122,7 +122,7 @@ async def upvote(ctx: lightbulb.SlashContext) -> None:
 
 
 @plugin.command
-@lightbulb.add_checks(check_target_is_not_author)
+@lightbulb.add_checks(check_target_is_not_author, lightbulb.guild_only)
 @lightbulb.option("member", "The member to downvote", type=hikari.OptionType.USER)
 @lightbulb.command("downvote", "Downvotes a member")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -174,9 +174,12 @@ async def voting_errors(event: lightbulb.CommandErrorEvent) -> bool:
     bot_avatar_url = plugin.bot.get_me().avatar_url
     exception = event.exception
 
-    if isinstance(exception, lightbulb.CheckFailure):
+    if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
+        return False
+
+    elif utils.evaluate_exception(exception, lightbulb.CheckFailure):
         error_embed = utils.create_error_embed(
-            "You can not vote for yourself.", bot_avatar_url
+            "You cannot vote for yourself.", bot_avatar_url
         )
         await event.context.respond(
             embed=error_embed,

@@ -28,6 +28,7 @@ async def get_reputation(member_id: hikari.Snowflake) -> tuple:
 
 
 @plugin.command
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option(
     "member",
     "The member to see the profile of",
