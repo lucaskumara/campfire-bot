@@ -71,9 +71,9 @@ async def profile(ctx: lightbulb.SlashContext) -> None:
     profile_embed.add_field("User ID", member.id, inline=True)
     profile_embed.add_field("Joined at", member_joined, inline=True)
     profile_embed.add_field("Created at", member_created, inline=True)
-    profile_embed.add_field("Reputation", f"{member_reputation}", inline=True)
-    profile_embed.add_field("Upvotes", f"{member_upvotes}", inline=True)
-    profile_embed.add_field("Downvotes", f"{member_downvotes}", inline=True)
+    profile_embed.add_field("Global Reputation", f"{member_reputation}", inline=True)
+    profile_embed.add_field("Total Upvotes", f"{member_upvotes}", inline=True)
+    profile_embed.add_field("Total Downvotes", f"{member_downvotes}", inline=True)
 
     await ctx.respond(embed=profile_embed)
 
