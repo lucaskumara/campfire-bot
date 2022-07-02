@@ -32,7 +32,7 @@ async def get_reputation(member_id: hikari.Snowflake) -> tuple:
 @lightbulb.option(
     "member",
     "The member to see the profile of",
-    type=hikari.OptionType.USER,
+    type=hikari.Member,
     required=False,
 )
 @lightbulb.command("profile", "Displays information about the member")

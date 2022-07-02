@@ -86,7 +86,7 @@ def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
 
 @plugin.command
 @lightbulb.add_checks(check_target_is_not_author, lightbulb.guild_only)
-@lightbulb.option("member", "The member to upvote", type=hikari.OptionType.USER)
+@lightbulb.option("member", "The member to upvote", type=hikari.Member)
 @lightbulb.command("upvote", "Upvotes a member")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def upvote(ctx: lightbulb.SlashContext) -> None:
@@ -123,7 +123,7 @@ async def upvote(ctx: lightbulb.SlashContext) -> None:
 
 @plugin.command
 @lightbulb.add_checks(check_target_is_not_author, lightbulb.guild_only)
-@lightbulb.option("member", "The member to downvote", type=hikari.OptionType.USER)
+@lightbulb.option("member", "The member to downvote", type=hikari.Member)
 @lightbulb.command("downvote", "Downvotes a member")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def downvote(ctx: lightbulb.SlashContext) -> None:
