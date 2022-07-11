@@ -4,6 +4,7 @@ import typing
 
 from datetime import datetime, timezone
 
+
 INFO_EMBED_COLOUR = hikari.Colour(0xE67E22)
 ERROR_EMBED_COLOUR = None  # hikari.Colour(0xE74C3C)
 DELETE_ERROR_DELAY = 10
@@ -110,3 +111,15 @@ def evaluate_exception(
                 return True
 
     return False
+
+
+def get_bot_avatar_url(plugin: lightbulb.Plugin) -> hikari.URL:
+    """Gets the bot avatar URL from a plugin.
+
+    Arguments:
+        plugin: The plugin to get the URL from.
+
+    Returns:
+        The URL of the bots avatar.
+    """
+    return plugin.bot.get_me().avatar_url
