@@ -14,17 +14,12 @@ Upon cloning the repository, you will need to create a `config.ini` file and ins
 
 ### Config File
 
-The config file can have two sections, `[BOT]` and `[OPTIONAL]`.
-
-The `[BOT]` section contains values that are critical to the operation of the application. The `[OPTIONAL]` section contains additional values that are not required for operation but can modify the way the application is run.
+The config file has a `[BOT]` section that contains values critical to the operation of the application.
 
 ```ini
 [BOT]
 TOKEN=... # Discord Application Token
 DATABASE_URI=... # MongoDB Database URL
-
-[OPTIONAL]
-GUILDS=[..., ...] # Development Discord Server IDs
 ```
 
 Application tokens can be obtained at https://discord.com/developers/
