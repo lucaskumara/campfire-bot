@@ -1,6 +1,8 @@
 import hikari
 import lightbulb
 import utils
+import typing
+
 
 plugin = lightbulb.Plugin("Profile")
 
@@ -36,11 +38,11 @@ async def get_reputation(member_id: hikari.Snowflake) -> tuple:
     required=False,
 )
 @lightbulb.command("profile", "Displays information about the member")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def profile(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashCommand, lightbulb.PrefixCommand)
+async def profile(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Displays a members profile in the guild.
-
-    Called when a member uses /profile [member].
 
     Arguments:
         ctx: The context for the command.
@@ -48,7 +50,6 @@ async def profile(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     """
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     member = ctx.options.member or ctx.member
     member_full_name = f"{member.username}#{member.discriminator}"
     member_joined = member.joined_at.strftime("%b %d, %Y")
@@ -64,7 +65,7 @@ async def profile(ctx: lightbulb.SlashContext) -> None:
     profile_embed = utils.create_info_embed(
         f"{member_full_name}'s Profile",
         f"Here are some details about `{member_full_name}`",
-        bot_avatar_url,
+        utils.get_bot_avatar_url(plugin),
     )
 
     profile_embed.set_thumbnail(member.avatar_url or member.default_avatar_url)

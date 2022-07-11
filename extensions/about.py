@@ -1,16 +1,18 @@
 import lightbulb
 import utils
+import typing
+
 
 plugin = lightbulb.Plugin("About")
 
 
 @plugin.command
 @lightbulb.command("about", "Displays info about the bot")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def about(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashCommand, lightbulb.PrefixCommand)
+async def about(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Sends a message containing bot information to the server.
-
-    Called when a user uses /about
 
     Arguments:
         ctx: The context for the command.
@@ -18,16 +20,17 @@ async def about(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     """
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     message = (
         "Campfire is a utility discord bot that began development in November 2021. "
         "The goal of the project was to provide users with an expanded set of features "
-        "available to them when using a discord server.\n\n"
+        "available to them when using a discord server.\n"
+        "\n"
+        "**Donate**: https://ko-fi.com/campfire\n"
+        "**Support server**: COMING SOON"
     )
-    links = "**Donate**: https://ko-fi.com/campfire\n" "**Support server**: COMING SOON"
 
     about_embed = utils.create_info_embed(
-        "About Campfire", message + links, bot_avatar_url
+        "About Campfire", message, utils.get_bot_avatar_url(plugin)
     )
 
     await ctx.respond(embed=about_embed)

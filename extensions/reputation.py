@@ -1,18 +1,34 @@
 import hikari
 import lightbulb
 import utils
+import typing
+
 
 plugin = lightbulb.Plugin("Reputation")
 
 
 async def get_upvotes(target_id: hikari.Snowflake) -> list:
-    """Gets a list of IDs for users who have upvoted the target."""
+    """Gets a list of IDs for users who have upvoted the target.
+
+    Arguments:
+        target_id: The ID of the user to get the upvotes of.
+
+    Returns:
+        The list of member IDs that upvoted the target.
+    """
     document = await plugin.bot.d.db_conn.reputations.find_one({"member_id": target_id})
     return document.get("upvotes", []) if document is not None else []
 
 
 async def get_downvotes(target_id: hikari.Snowflake) -> list:
-    """Gets a list of IDs for users who have downvoted the target."""
+    """Gets a list of IDs for users who have downvoted the target.
+
+    Arguments:
+        target_id: The ID of the user to get the downvotes of.
+
+    Returns:
+        The list of member IDs that downvoted the target.
+    """
     document = await plugin.bot.d.db_conn.reputations.find_one({"member_id": target_id})
     return document.get("downvotes", []) if document is not None else []
 
@@ -22,8 +38,8 @@ async def upvote_member(
 ) -> None:
     """Updates the database to show that the voter has upvoted the target.
 
-    Pulls the voter ID from the array of IDs for users who have downvoted the target and
-    pushes it to the array of users who have upvoted.
+    Pulls the voter ID from the array of IDs for users who have downvoted the target
+    and pushes it to the array of users who have upvoted.
 
     Arguments:
         voter_id: The ID of the voting users.
@@ -72,7 +88,9 @@ async def downvote_member(
 
 
 @lightbulb.Check
-def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
+def check_target_is_not_author(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> bool:
     """A check to ensure that the target member is not the command author.
 
     Arguments:
@@ -88,11 +106,11 @@ def check_target_is_not_author(ctx: lightbulb.SlashContext) -> bool:
 @lightbulb.add_checks(check_target_is_not_author, lightbulb.guild_only)
 @lightbulb.option("member", "The member to upvote", type=hikari.Member)
 @lightbulb.command("upvote", "Upvotes a member")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def upvote(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashCommand, lightbulb.PrefixCommand)
+async def upvote(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Upvotes a member.
-
-    Called when a member uses /upvote [member].
 
     Arguments:
         ctx: The context for the command.
@@ -100,7 +118,6 @@ async def upvote(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     """
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     voter_member = ctx.member
     target_member = ctx.options.member
     target_member_upvotes = await get_upvotes(target_member.id)
@@ -108,13 +125,15 @@ async def upvote(ctx: lightbulb.SlashContext) -> None:
     # Check if target has already been upvoted by the author
     if voter_member.id in target_member_upvotes:
         error_embed = utils.create_error_embed(
-            "You have already upvoted that member", bot_avatar_url
+            "You have already upvoted that member", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
 
     upvote_embed = utils.create_info_embed(
-        "Member upvoted", f"You have upvoted {target_member.mention}", bot_avatar_url
+        "Member upvoted",
+        f"You have upvoted {target_member.mention}",
+        utils.get_bot_avatar_url(plugin),
     )
 
     await upvote_member(voter_member.id, target_member.id)
@@ -122,14 +141,14 @@ async def upvote(ctx: lightbulb.SlashContext) -> None:
 
 
 @plugin.command
-@lightbulb.add_checks(check_target_is_not_author, lightbulb.guild_only)
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("member", "The member to downvote", type=hikari.Member)
 @lightbulb.command("downvote", "Downvotes a member")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def downvote(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashCommand, lightbulb.PrefixCommand)
+async def downvote(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Downvotes a member.
-
-    Called when a member uses /downvote [member].
 
     Arguments:
         ctx: The context for the command.
@@ -137,7 +156,6 @@ async def downvote(ctx: lightbulb.SlashContext) -> None:
     Returns:
         None.
     """
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     voter_member = ctx.member
     target_member = ctx.options.member
     target_member_downvotes = await get_downvotes(target_member.id)
@@ -145,7 +163,7 @@ async def downvote(ctx: lightbulb.SlashContext) -> None:
     # Check if target has already been downvoted by the author
     if voter_member.id in target_member_downvotes:
         error_embed = utils.create_error_embed(
-            "You have already downvoted that member", bot_avatar_url
+            "You have already downvoted that member", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -153,7 +171,7 @@ async def downvote(ctx: lightbulb.SlashContext) -> None:
     downvote_embed = utils.create_info_embed(
         "Member downvoted",
         f"You have downvoted {target_member.mention}",
-        bot_avatar_url,
+        utils.get_bot_avatar_url(plugin),
     )
 
     await downvote_member(voter_member.id, target_member.id)
@@ -171,7 +189,6 @@ async def voting_errors(event: lightbulb.CommandErrorEvent) -> bool:
     Returns:
         True if the exception can be handled, false if not.
     """
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     exception = event.exception
 
     if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
@@ -179,7 +196,7 @@ async def voting_errors(event: lightbulb.CommandErrorEvent) -> bool:
 
     elif utils.evaluate_exception(exception, lightbulb.CheckFailure):
         error_embed = utils.create_error_embed(
-            "You cannot vote for yourself.", bot_avatar_url
+            "You cannot vote for yourself.", utils.get_bot_avatar_url(plugin)
         )
         await event.context.respond(
             embed=error_embed,

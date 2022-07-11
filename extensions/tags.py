@@ -1,6 +1,7 @@
 import hikari
 import lightbulb
 import utils
+import typing
 
 from hikari.messages import ButtonStyle
 from lightbulb.utils.permissions import permissions_for
@@ -13,6 +14,7 @@ from lightbulb.utils.nav import (
 )
 from datetime import datetime, timezone
 
+
 plugin = lightbulb.Plugin("Tags")
 
 
@@ -22,9 +24,9 @@ async def guild_has_tags(
 ) -> bool:
     """Checks if the guild has any tags in it.
 
-    Query the database for any tags in the guild. If the tag author is not
-    None, query the database for any tags in the guild made by the author. If
-    the query gets at least one tag, the guild has tags.
+    Query the database for any tags in the guild. If the tag author is not None, query
+    the database for any tags in the guild made by the author. If the query gets at
+    least one tag, the guild has tags.
 
     Arguments:
         tag_author: The author of the tags to search. Checks all tags if None.
@@ -61,10 +63,10 @@ async def paginate_all_tags(
 ) -> EmbedPaginator:
     """Adds guild tags to the paginator.
 
-    Creates an EmbedPaginator and adds formatted lines containing a list of
-    tags in a guild to it. The queried tags depend on whether the author is
-    None or not. If the author is none, query all tags for the guild,
-    otherwise, query all tags for the guild that were written by the author.
+    Creates an EmbedPaginator and adds formatted lines containing a list of tags in a
+    guild to it. The queried tags depend on whether the author is None or not. If the
+    author is none, query all tags for the guild, otherwise, query all tags for the
+    guild that were written by the author.
 
     Arguments:
         tag_author: The author of all the tags to list. Lists all if None.
@@ -74,7 +76,6 @@ async def paginate_all_tags(
         The constructed embed paginator.
     """
     paginator = EmbedPaginator(prefix="```", suffix="```", max_lines=10)
-    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     @paginator.embed_factory()
     def build_embed(index, content):
@@ -82,7 +83,7 @@ async def paginate_all_tags(
         embed = utils.create_info_embed(
             "Tag list",
             f"Here is a list of tags. Use `/tag show [tag]` to view its contents. {content}",
-            bot_avatar_url,
+            utils.get_bot_avatar_url(plugin),
         )
         embed.set_footer(f"Page {index}")
         return embed
@@ -109,9 +110,8 @@ async def paginate_all_tags(
 async def get_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> dict:
     """Returns the retrived document of the tag in the guild.
 
-    Query the database for a tag in the specified guild with the specified tag
-    name. If a document is found, return the document itself from the list of
-    queried documents.
+    Query the database for a tag in the specified guild with the specified tag name. If
+    a document is found, return the document itself from the list of queried documents.
 
     Arguments:
         tag_name: The name of the tag to find.
@@ -144,9 +144,9 @@ async def create_tag(
 ) -> None:
     """Creates a new tag in the guild.
 
-    Pushes a new document with the specified tag name and content into the
-    guild document tags list if it exists. Otherwise, create a guild document
-    with the tags list containing the tag document.
+    Pushes a new document with the specified tag name and content into the guild
+    document tags list if it exists. Otherwise, create a guild document with the tags
+    list containing the tag document.
 
     Arguments:
         tag_name: The name of the tag.
@@ -180,8 +180,7 @@ async def create_tag(
 async def delete_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
     """Deletes a tag in the guild.
 
-    Pulls a document with the specified tag name from the guild document tags
-    list.
+    Pulls a document with the specified tag name from the guild document tags list.
 
     Arguments:
         tag_name: The name of the tag.
@@ -200,9 +199,9 @@ async def edit_tag(
 ) -> None:
     """Edits a tag in the guild.
 
-    Updates a document with the specified tag name from the guild document
-    tags list to have the new specified tag content. Also updates the time the
-    tag was last modified.
+    Updates a document with the specified tag name from the guild document tags list to
+    have the new specified tag content. Also updates the time the tag was last
+    modified.
 
     Arguments:
         tag_name: The name of the tag to update.
@@ -223,8 +222,8 @@ async def edit_tag(
 async def increment_tag(tag_name: str, tag_guild: hikari.GatewayGuild) -> None:
     """Increments the number of uses of a tag in a guild by one.
 
-    Updates a document with the specified tag name from the guild document
-    tags list by incrementing the uses of the tag has been used by 1.
+    Updates a document with the specified tag name from the guild document tags list by
+    incrementing the uses of the tag has been used by 1.
 
     Arguments:
         tag_name: The name of the tag to increment.
@@ -275,8 +274,10 @@ async def delete_guild_document(event: hikari.GuildLeaveEvent) -> None:
 @plugin.command
 @lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.command("tag", "Base of tag command group")
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def tag(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashCommandGroup, lightbulb.PrefixCommandGroup)
+async def tag(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Base of the tag command group.
 
     Arguments:
@@ -291,8 +292,10 @@ async def tag(ctx: lightbulb.SlashContext) -> None:
 @tag.child
 @lightbulb.option("name", "The name of the tag")
 @lightbulb.command("show", "Shows the content of a tag", inherit_checks=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def show(ctx: lightbulb.SlashCommand) -> None:
+@lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
+async def show(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Displays a tag in the guild.
 
     Called when a user uses /tag show <tag name>
@@ -305,13 +308,12 @@ async def show(ctx: lightbulb.SlashCommand) -> None:
     """
     tag_name = ctx.options.name.lower()
     tag_guild = ctx.get_guild()
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", bot_avatar_url
+            "That tag does not exist.", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -324,8 +326,10 @@ async def show(ctx: lightbulb.SlashCommand) -> None:
 @lightbulb.option("content", "The content of the tag")
 @lightbulb.option("name", "The name of the tag")
 @lightbulb.command("create", "Creates a new tag", inherit_checks=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def create(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
+async def create(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Creates a new tag in the guild.
 
     Called when a user uses /tag create <tag name> <tag content>
@@ -340,12 +344,11 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     tag_content = ctx.options.content
     tag_author = ctx.author
     tag_guild = ctx.get_guild()
-    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     # If there is already an existing tag
     if await get_tag(tag_name, tag_guild) is not None:
         error_embed = utils.create_error_embed(
-            "That tag already exists.", bot_avatar_url
+            "That tag already exists.", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -354,7 +357,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     if len(tag_name) > 54:
         error_embed = utils.create_error_embed(
             "The tag name must be less than 54 characters long.",
-            bot_avatar_url,
+            utils.get_bot_avatar_url(plugin),
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -363,7 +366,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
     if len(tag_content) > 2000:
         error_embed = utils.create_error_embed(
             "The tag content must be less than 2000 characters long.",
-            bot_avatar_url,
+            utils.get_bot_avatar_url(plugin),
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -374,7 +377,7 @@ async def create(ctx: lightbulb.SlashContext) -> None:
             "Your tag has been successfully created. \n"
             f"Use `/tag show {tag_name}` to view it."
         ),
-        bot_avatar_url,
+        utils.get_bot_avatar_url(plugin),
     )
 
     await create_tag(tag_name, tag_content, tag_author, tag_guild)
@@ -384,8 +387,10 @@ async def create(ctx: lightbulb.SlashContext) -> None:
 @tag.child
 @lightbulb.option("name", "The name of tag")
 @lightbulb.command("delete", "Deletes an existing tag", inherit_checks=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def delete(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
+async def delete(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Deletes an existing tag from the guild.
 
     Called when a user uses /tag delete <tag name>
@@ -399,13 +404,12 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
     tag_name = ctx.options.name.lower()
     tag_author = ctx.author
     tag_guild = ctx.get_guild()
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", bot_avatar_url
+            "That tag does not exist.", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -416,7 +420,8 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
         and not permissions_for(tag_author) & hikari.Permissions.MANAGE_MESSAGES
     ):
         error_embed = utils.create_error_embed(
-            "You don't have permission to delete that tag.", bot_avatar_url
+            "You don't have permission to delete that tag.",
+            utils.get_bot_avatar_url(plugin),
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -424,7 +429,7 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
     tag_deleted_embed = utils.create_info_embed(
         "Tag deleted",
         f"The tag `{tag_name}` has been successfully deleted.",
-        bot_avatar_url,
+        utils.get_bot_avatar_url(plugin),
     )
 
     await delete_tag(tag_name, tag_guild)
@@ -435,8 +440,10 @@ async def delete(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("content", "The content of the tag")
 @lightbulb.option("name", "The name of the tag")
 @lightbulb.command("edit", "Edits an existing tag", inherit_checks=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def edit(ctx: lightbulb.SlashCommand) -> None:
+@lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
+async def edit(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Edits the content of a tag in the guild.
 
     Called when a user uses /tag edit <tag name> <tag content>
@@ -451,13 +458,12 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
     tag_content = ctx.options.content
     tag_author = ctx.author
     tag_guild = ctx.get_guild()
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", bot_avatar_url
+            "That tag does not exist.", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -465,7 +471,8 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
     # If the author does not own the tag
     if tag_author.id != document["tags"]["author_id"]:
         error_embed = utils.create_error_embed(
-            "You don't have permission to edit that tag.", bot_avatar_url
+            "You don't have permission to edit that tag.",
+            utils.get_bot_avatar_url(plugin),
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -473,7 +480,7 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
     tag_edited_embed = utils.create_info_embed(
         "Tag updated",
         f"The tag `{tag_name}` has been successfully updated.",
-        bot_avatar_url,
+        utils.get_bot_avatar_url(plugin),
     )
 
     await edit_tag(tag_name, tag_content, tag_guild)
@@ -483,8 +490,10 @@ async def edit(ctx: lightbulb.SlashCommand) -> None:
 @tag.child
 @lightbulb.option("name", "The name of the tag")
 @lightbulb.command("info", "Shows info about an existing tag", inherit_checks=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def info(ctx: lightbulb.SlashCommand) -> None:
+@lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
+async def info(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Shows information about a tag in the guild.
 
     Called when a user uses /tag info <tag name>
@@ -497,13 +506,12 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
     """
     tag_name = ctx.options.name.lower()
     tag_guild = ctx.get_guild()
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     document = await get_tag(tag_name, tag_guild)
 
     # If there is no existing tag
     if document is None:
         error_embed = utils.create_error_embed(
-            "That tag does not exist.", bot_avatar_url
+            "That tag does not exist.", utils.get_bot_avatar_url(plugin)
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return
@@ -521,7 +529,9 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
     tag_modified_at_formatted = tag_modified_at.strftime("%b %d, %Y")
 
     info_embed = utils.create_info_embed(
-        "Tag info", f"Use `/tag show {tag_name}` to view its contents.", bot_avatar_url
+        "Tag info",
+        f"Use `/tag show {tag_name}` to view its contents.",
+        utils.get_bot_avatar_url(plugin),
     )
 
     info_embed.add_field("Name", tag_name, inline=True)
@@ -539,8 +549,10 @@ async def info(ctx: lightbulb.SlashCommand) -> None:
     "member", "The owner of the tags to view", type=hikari.Member, required=False
 )
 @lightbulb.command("list", "Lists all server tags", inherit_checks=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def list(ctx: lightbulb.SlashCommand) -> None:
+@lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
+async def list(
+    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+) -> None:
     """Lists all tags in the guild.
 
     Called when a user uses /tag list [member]
@@ -553,13 +565,12 @@ async def list(ctx: lightbulb.SlashCommand) -> None:
     """
     tag_author = ctx.options.member
     tag_guild = ctx.get_guild()
-    bot_avatar_url = plugin.bot.get_me().avatar_url
 
     # If there are no tags to display
     if not await guild_has_tags(tag_author, tag_guild):
         error_embed = utils.create_error_embed(
             "There are no tags to display.",
-            bot_avatar_url,
+            utils.get_bot_avatar_url(plugin),
         )
         await ctx.respond(embed=error_embed, delete_after=utils.DELETE_ERROR_DELAY)
         return

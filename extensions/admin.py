@@ -1,9 +1,11 @@
 import hikari
 import lightbulb
 import utils
+import typing
 
 from bot import config
 from motor.motor_asyncio import AsyncIOMotorClient
+
 
 plugin = lightbulb.Plugin("Admin")
 
@@ -36,7 +38,7 @@ async def close_database_connection(event: hikari.StoppingEvent) -> None:
 
 
 @plugin.listener(lightbulb.CommandErrorEvent)
-async def on_command_error(event: lightbulb.CommandErrorEvent) -> None:
+async def on_command_error(event: lightbulb.CommandErrorEvent) -> typing.Optional[bool]:
     """Handles bot command errors if they aren't handled by plugin/command handlers.
 
     Arguments:
@@ -58,7 +60,7 @@ async def on_command_error(event: lightbulb.CommandErrorEvent) -> None:
         )
         return True
 
-    return False
+    raise exception
 
 
 def load(bot: lightbulb.BotApp) -> None:
