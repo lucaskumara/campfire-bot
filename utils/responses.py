@@ -1,6 +1,5 @@
 import hikari
 import lightbulb
-import typing
 
 from datetime import datetime, timezone
 
@@ -89,60 +88,3 @@ async def error_response(context: lightbulb.Context, description: str) -> None:
     error_embed = create_error_embed(description, bot_avatar_url)
 
     await context.respond(embed=error_embed, delete_after=ERROR_DELETE_DELAY)
-
-
-async def clone_channel(
-    channel: hikari.GuildVoiceChannel, **kwargs
-) -> hikari.GuildVoiceChannel:
-    """Clones a voice channel in a guild.
-
-    Creates a new voice channel in a specified guild and copies all values from
-    an existing voice channel unless otherwise specified.
-
-    Arguments:
-        channel: The voice channel to clone.
-        **kwargs: The channel kwargs to set instead of clone from channel.
-
-    Returns:
-        The clone voice channel.
-    """
-    clone_channel = await channel.get_guild().create_voice_channel(
-        kwargs.get("name", channel.name),
-        position=kwargs.get("position", channel.position),
-        user_limit=kwargs.get("user_limit", channel.user_limit),
-        bitrate=kwargs.get("bitrate", channel.bitrate),
-        video_quality_mode=kwargs.get("video_quality_mode", channel.video_quality_mode),
-        permission_overwrites=kwargs.get(
-            "permission_overwrites", list(channel.permission_overwrites.values())
-        ),
-        region=kwargs.get("region", channel.region),
-        category=kwargs.get("category", channel.parent_id),
-    )
-    return clone_channel
-
-
-def evaluate_exception(
-    exception: lightbulb.LightbulbError,
-    exception_type: typing.Type[lightbulb.LightbulbError],
-):
-    """Evaluates whether an exception is of or contains a specified type.
-
-    Check if the exception type is the specified type. If it isn't, check its causes to
-    see if it contains the exception type.
-
-    Arguments:
-        exception: The exception to check.
-        exception_type: The type to check for.
-
-    Returns:
-        True if the except is or contains the type, false if not.
-    """
-    if type(exception) is exception_type:
-        return True
-
-    if hasattr(exception, "causes"):
-        for cause in exception.causes:
-            if type(cause) is exception_type:
-                return True
-
-    return False
