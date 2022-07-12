@@ -47,17 +47,10 @@ async def on_command_error(event: lightbulb.CommandErrorEvent) -> typing.Optiona
     Returns:
         True if the exception can be handled, false if not.
     """
-    bot_avatar_url = plugin.bot.get_me().avatar_url
     exception = event.exception
 
     if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
-        error_embed = utils.create_error_embed(
-            "You cannot use this command in DMs.", bot_avatar_url
-        )
-        await event.context.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(event.context, "You cannot use this command in DMs.")
         return True
 
     raise exception

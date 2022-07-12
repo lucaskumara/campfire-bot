@@ -10,7 +10,7 @@ plugin = lightbulb.Plugin("About")
 @lightbulb.command("about", "Displays info about the bot")
 @lightbulb.implements(lightbulb.SlashCommand, lightbulb.PrefixCommand)
 async def about(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Sends a message containing bot information to the server.
 
@@ -29,11 +29,7 @@ async def about(
         "**Support server**: COMING SOON"
     )
 
-    about_embed = utils.create_info_embed(
-        "About Campfire", message, utils.get_bot_avatar_url(plugin)
-    )
-
-    await ctx.respond(embed=about_embed)
+    await utils.info_response(context, "About Campfire", message)
 
 
 def load(bot: lightbulb.BotApp) -> None:

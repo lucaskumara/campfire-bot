@@ -120,6 +120,7 @@ async def valid_template(channel_id: hikari.Snowflake) -> bool:
     document = await plugin.bot.d.db_conn.lobby_channels.find_one(
         {"templates": channel_id}
     )
+
     return document is not None
 
 
@@ -138,46 +139,48 @@ async def valid_clone(channel_id: hikari.Snowflake) -> bool:
     document = await plugin.bot.d.db_conn.lobby_channels.find_one(
         {"clones.clone_id": channel_id}
     )
+
     return document is not None
 
 
-async def enable_command(command_name: str, guild_id: hikari.Snowflake) -> None:
+async def enable_command(command_name: str, guild: hikari.GatewayGuild) -> None:
     """Enables a command in a guild.
 
-    Enables a command in a guild by removing it from the guilds list of disabled commands.
+    Enables a command in a guild by removing it from the guilds list of disabled
+    commands.
 
     Arguments:
         command_name: The name of the command.
-        guild_id: The ID of the guild to enable the command in.
+        guild: The guild to enable the command in.
 
     Returns:
         None.
     """
     await plugin.bot.d.db_conn.lobby_disabled_commands.update_one(
-        {"guild_id": guild_id}, {"$pull": {"disabled_commands": command_name}}
+        {"guild_id": guild.id}, {"$pull": {"disabled_commands": command_name}}
     )
 
 
-async def disable_command(command_name: str, guild_id: hikari.Snowflake) -> None:
+async def disable_command(command_name: str, guild: hikari.GatewayGuild) -> None:
     """Disables a command in a guild.
 
     Disables a command in a guild by adding it to the guilds list of disabled commands.
 
     Arguments:
         command_name: The name of the command.
-        guild_id: The ID of the guild to disable the command in.
+        guild: The guild to disable the command in.
 
     Returns:
         None.
     """
     await plugin.bot.d.db_conn.lobby_disabled_commands.update_one(
-        {"guild_id": guild_id},
+        {"guild_id": guild.id},
         {"$push": {"disabled_commands": command_name}},
         upsert=True,
     )
 
 
-async def command_is_disabled(command_name: str, guild_id: hikari.Snowflake) -> bool:
+async def command_is_disabled(command_name: str, guild: hikari.GatewayGuild) -> bool:
     """Checks if a command is disabled in a guild.
 
     Checks if a command is disabled in a guild by checking if it is in the guilds list
@@ -185,14 +188,15 @@ async def command_is_disabled(command_name: str, guild_id: hikari.Snowflake) -> 
 
     Arguments:
         command_name: The name of the command.
-        guild_id: The ID of the guild to check if the command is disabled for.
+        guild: The guild to check if the command is disabled in.
 
     Returns:
         True if the command is disabled otherwise false.
     """
     document = await plugin.bot.d.db_conn.lobby_disabled_commands.find_one(
-        {"guild_id": guild_id, "disabled_commands": command_name}
+        {"guild_id": guild.id, "disabled_commands": command_name}
     )
+
     return document is not None
 
 
@@ -609,17 +613,18 @@ async def on_leave_clone(event: hikari.VoiceStateUpdateEvent) -> None:
 @lightbulb.add_checks(
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
+    lightbulb.bot_has_guild_permissions(hikari.Permissions.MOVE_MEMBERS),
     lightbulb.guild_only,
 )
 @lightbulb.command("lobby", "Base of lobby command group")
 @lightbulb.implements(lightbulb.SlashCommandGroup, lightbulb.PrefixCommandGroup)
 async def lobby(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Base of the channel command group.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
@@ -631,25 +636,20 @@ async def lobby(
 @lightbulb.command("create", "Creates a new lobby template", inherit_checks=True)
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def create(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Creates a new lobby template channel in the guild.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild = ctx.get_guild()
-    create_embed = utils.create_info_embed(
-        "Channel created",
-        "Your lobby has been created. Feel free to edit it!",
-        utils.get_bot_avatar_url(plugin),
+    await create_template("New Lobby - Edit me!", context.get_guild())
+    await utils.info_response(
+        context, "Channel created", "You lobby has been created. Feel free to edit it!"
     )
-
-    await create_template("New Lobby - Edit me!", guild)
-    await ctx.respond(embed=create_embed)
 
 
 @lobby.child
@@ -661,39 +661,30 @@ async def create(
 @lightbulb.command("enable", "Enables the usage of a lobby command")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def enable(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Enables a commands usage in the guild.
 
     The command can only be used by guild members with the administrator permission.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    command_name = ctx.options.command
-    guild_id = ctx.guild_id
+    command_name = context.options.command
+    guild = context.get_guild()
 
-    if not await command_is_disabled(command_name, guild_id):
-        error_embed = utils.create_error_embed(
-            "That command is already enabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is already enabled in the guild
+    if not await command_is_disabled(command_name, guild):
+        await utils.error_response(context, "That command is already enabled.")
         return
 
-    enabled_embed = utils.create_info_embed(
-        "Command enabled",
-        f"The command `{command_name}` has been enabled.",
-        utils.get_bot_avatar_url(plugin),
+    await enable_command(command_name, guild)
+    await utils.info_response(
+        context, "Command enabled", f"The command `{command_name}` has been enabled."
     )
-
-    await enable_command(command_name, guild_id)
-    await ctx.respond(embed=enabled_embed)
 
 
 @lobby.child
@@ -705,39 +696,30 @@ async def enable(
 @lightbulb.command("disable", "Disables the usage of a lobby command")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def disable(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Disables a commands usage in the guild.
 
     The command can only be used by guild members with the administrator permission.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    command_name = ctx.options.command
-    guild_id = ctx.guild_id
+    command_name = context.options.command
+    guild = context.get_guild()
 
-    if await command_is_disabled(command_name, guild_id):
-        error_embed = utils.create_error_embed(
-            "That command is already disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is already disabled in the guild
+    if await command_is_disabled(command_name, guild):
+        await utils.error_response(context, "That command is already disabled.")
         return
 
-    disable_embed = utils.create_info_embed(
-        "Command disabled",
-        f"The command `{command_name}` has been disabled.",
-        utils.get_bot_avatar_url(plugin),
+    await disable_command(command_name, guild)
+    await utils.info_response(
+        context, "Command disabled", f"The command `{command_name}` has been disabled."
     )
-
-    await disable_command(command_name, guild_id)
-    await ctx.respond(embed=disable_embed)
 
 
 @lobby.child
@@ -746,93 +728,63 @@ async def disable(
 @lightbulb.command("rename", "Renames the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def rename(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Renames a the authors current lobby in the guild.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild_id = ctx.guild_id
+    guild = context.get_guild()
 
-    if await command_is_disabled("rename", guild_id):
-        error_embed = utils.create_error_embed(
-            "Sorry. This command has been disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is disabled in the guild
+    if await command_is_disabled("rename", guild):
+        await utils.error_response(context, "Sorry. This command has been disabled.")
         return
 
-    guild = ctx.get_guild()
-    author_member = ctx.member
+    author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
+    # Check if the command author is not a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        error_embed = utils.create_error_embed(
-            "You are not in a lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
+    # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        error_embed = utils.create_error_embed(
-            "You are not the owner of this lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not the owner of this lobby")
         return
 
-    clean_name = ctx.options.name.strip()
+    clean_name = context.options.name.strip()
 
+    # Check if the desired new name is too long or too short
     if not (1 <= len(clean_name) <= 100):
-        error_embed = utils.create_error_embed(
-            "The new name must be 1-100 character long.",
-            utils.get_bot_avatar_url(plugin),
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
+        await utils.error_response(
+            context, "The new name must be 1-100 characters long."
         )
         return
 
     lobby = guild.get_channel(author_channel_id)
 
     try:
-        rename_embed = utils.create_info_embed(
-            "Channel renamed",
-            f"The lobby has been renamed to `{clean_name}`.",
-            utils.get_bot_avatar_url(plugin),
-        )
-
         await lobby.edit(name=clean_name)
-        await ctx.respond(embed=rename_embed)
-
-    except hikari.errors.RateLimitedError as error:
-        error_embed = utils.create_error_embed(
-            (
-                "You are being rate limited. Try again in "
-                f"`{int(error.retry_after)}` seconds."
-            ),
-            utils.get_bot_avatar_url(plugin),
+        await utils.info_response(
+            context, "Channel renamed", f"The lobby has been renamed to `{clean_name}`."
         )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
+
+    # Let the command author know if they are being rate limited
+    except hikari.errors.RateLimitedError as error:
+        await utils.error_response(
+            context,
+            f"You are being rate limited. Try again in `{int(error.retry_after)}` seconds.",
         )
 
 
@@ -841,78 +793,50 @@ async def rename(
 @lightbulb.command("lock", "Prevents new members from joining the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def lock(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Locks a lobby so that new members can not join.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild_id = ctx.guild_id
+    guild = context.get_guild()
 
-    if await command_is_disabled("lock", guild_id):
-        error_embed = utils.create_error_embed(
-            "Sorry. This command has been disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is disabled in the guild
+    if await command_is_disabled("lock", guild):
+        await utils.error_response(context, "Sorry. This command has been disabled.")
         return
 
-    guild = ctx.get_guild()
-    author_member = ctx.member
+    author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
+    # Check if the command author is not a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        error_embed = utils.create_error_embed(
-            "You are not in a lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
+    # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        error_embed = utils.create_error_embed(
-            "You are not the owner of this lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not the owner of this lobby.")
         return
 
     channel = guild.get_channel(author_channel_id)
 
+    # Check if the lobby is already locked
     if lobby_is_locked(channel):
-        error_embed = utils.create_error_embed(
-            "The lobby is already locked.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "The lobby is already locked.")
         return
-
-    channel = guild.get_channel(author_channel_id)
-    lock_embed = utils.create_info_embed(
-        "Channel locked",
-        "Your lobby has been locked.",
-        utils.get_bot_avatar_url(plugin),
-    )
 
     await lock_lobby(channel)
-    await ctx.respond(embed=lock_embed)
+    await utils.info_response(context, "Channel locked", "Your lobby has been locked.")
 
 
 @lobby.child
@@ -920,78 +844,52 @@ async def lock(
 @lightbulb.command("unlock", "Allows new members to join the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def unlock(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Unlocks a lobby so that new members can join.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild_id = ctx.guild_id
+    guild = context.get_guild()
 
-    if await command_is_disabled("unlock", guild_id):
-        error_embed = utils.create_error_embed(
-            "Sorry. This command has been disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is disabled in the guild
+    if await command_is_disabled("unlock", guild):
+        await utils.error_response(context, "Sorry. This command has been disabled.")
         return
 
-    guild = ctx.get_guild()
-    author_member = ctx.member
+    author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
+    # Check if the command author is not a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        error_embed = utils.create_error_embed(
-            "You are not in a lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
-    if document["clones"]["owner_id"] != ctx.member.id:
-        error_embed = utils.create_error_embed(
-            "You are not the owner of this lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command author is not the owner of the lobby they are in
+    if document["clones"]["owner_id"] != author_member.id:
+        await utils.error_response(context, "You are not the owner of this lobby.")
         return
 
     channel = guild.get_channel(author_channel_id)
 
+    # Check if the lobby is already unlocked
     if not lobby_is_locked(channel):
-        error_embed = utils.create_error_embed(
-            "The lobby is already unlocked.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "The lobby is already unlocked.")
         return
-
-    channel = guild.get_channel(author_channel_id)
-    unlock_embed = utils.create_info_embed(
-        "Channel unlocked",
-        "Your lobby has been unlocked.",
-        utils.get_bot_avatar_url(plugin),
-    )
 
     await unlock_lobby(channel)
-    await ctx.respond(embed=unlock_embed)
+    await utils.info_response(
+        context, "Channel unlocked", "Your lobby has been unlocked."
+    )
 
 
 @lobby.child
@@ -1000,78 +898,55 @@ async def unlock(
 @lightbulb.command("kick", "Kicks a member from the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def kick(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Kicks a member from the lobby.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild_id = ctx.guild_id
+    guild = context.get_guild()
 
-    if await command_is_disabled("kick", guild_id):
-        error_embed = utils.create_error_embed(
-            "Sorry. This command has been disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is disabled in the guild
+    if await command_is_disabled("kick", guild):
+        await utils.error_response(context, "Sorry. This command has been disabled.")
         return
 
-    guild = ctx.get_guild()
-    author_member = ctx.member
+    author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
+    # Check if the command author is not a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        error_embed = utils.create_error_embed(
-            "You are not in a lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
+    # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        error_embed = utils.create_error_embed(
-            "You are not the owner of this lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not the owner of this lobby.")
         return
 
-    target_member = ctx.options.member
+    target_member = context.options.member
     target_voice_state = guild.get_voice_state(target_member)
 
+    # Check if the target is not in the lobby
     if target_voice_state is None or author_channel_id != target_voice_state.channel_id:
-        error_embed = utils.create_error_embed(
-            "That member is not in the lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "That member is not in the lobby.")
         return
 
-    kick_embed = utils.create_info_embed(
+    await target_member.edit(voice_channel=None)
+    await utils.info_response(
+        context,
         "Member kicked",
         f"`{target_member.username}` has been kicked from the lobby.",
-        utils.get_bot_avatar_url(plugin),
     )
-
-    await target_member.edit(voice_channel=None)
-    await ctx.respond(embed=kick_embed)
 
 
 @lobby.child
@@ -1080,69 +955,48 @@ async def kick(
 @lightbulb.command("ban", "Bans a member from the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def ban(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Bans a member from the lobby.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild_id = ctx.guild_id
+    guild = context.get_guild()
 
-    if await command_is_disabled("ban", guild_id):
-        error_embed = utils.create_error_embed(
-            "Sorry. This command has been disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is disabled in the guild
+    if await command_is_disabled("ban", guild):
+        await utils.error_response(context, "Sorry. This command has been disabled.")
         return
 
-    guild = ctx.get_guild()
-    author_member = ctx.member
+    author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
+    # Check if the command author is not a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        error_embed = utils.create_error_embed(
-            "You are not in a lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
+    # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        error_embed = utils.create_error_embed(
-            "You are not the owner of this lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not the owner of this lobby.")
         return
 
     author_channel = guild.get_channel(author_channel_id)
-    target_member = ctx.options.member
+    target_member = context.options.member
     target_voice_state = guild.get_voice_state(target_member)
 
+    # Check if the target is already banned in the lobby
     if member_is_banned(author_channel, target_member):
-        error_embed = utils.create_error_embed(
-            "That member is already banned.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "That member is already banned.")
         return
 
     if (
@@ -1151,14 +1005,12 @@ async def ban(
     ):
         await target_member.edit(voice_channel=None)
 
-    ban_embed = utils.create_info_embed(
+    await ban_member(author_channel, target_member)
+    await utils.info_response(
+        context,
         "Member banned",
         f"`{target_member.username}` has been banned from the lobby.",
-        utils.get_bot_avatar_url(plugin),
     )
-
-    await ban_member(author_channel, target_member)
-    await ctx.respond(embed=ban_embed)
 
 
 @lobby.child
@@ -1167,78 +1019,55 @@ async def ban(
 @lightbulb.command("unban", "Unbans a member from the lobby")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def unban(
-    ctx: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
+    context: typing.Union[lightbulb.SlashContext, lightbulb.PrefixContext]
 ) -> None:
     """Unbans a member from the lobby.
 
     Arguments:
-        ctx: The context for the command.
+        context: The context for the command.
 
     Returns:
         None.
     """
-    guild_id = ctx.guild_id
+    guild = context.get_guild()
 
-    if await command_is_disabled("unban", guild_id):
-        error_embed = utils.create_error_embed(
-            "Sorry. This command has been disabled.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+    # Check if the command is disabled in the guild
+    if await command_is_disabled("unban", guild):
+        await utils.error_response(context, "Sorry. This command has been disabled.")
         return
 
-    guild = ctx.get_guild()
-    author_member = ctx.member
+    author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
+    # Check if the command author is not a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        error_embed = utils.create_error_embed(
-            "You are not in a lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
     document = await get_clone_document(author_channel_id)
 
+    # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        error_embed = utils.create_error_embed(
-            "You are not the owner of this lobby.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "You are not the owner of this lobby.")
         return
 
     author_channel = guild.get_channel(author_channel_id)
-    target_member = ctx.options.member
+    target_member = context.options.member
 
+    # Check if the target is not already banned in the lobby
     if not member_is_banned(author_channel, target_member):
-        error_embed = utils.create_error_embed(
-            "That member is not banned.", utils.get_bot_avatar_url(plugin)
-        )
-        await ctx.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
-        )
+        await utils.error_response(context, "That member is not banned.")
         return
 
-    unban_embed = utils.create_info_embed(
+    await unban_member(author_channel, target_member)
+    await utils.info_response(
+        context,
         "Member unbanned",
         f"`{target_member.username}` has been unbanned from the lobby.",
-        utils.get_bot_avatar_url(plugin),
     )
-
-    await unban_member(author_channel, target_member)
-    await ctx.respond(embed=unban_embed)
 
 
 @lobby.set_error_handler()
@@ -1257,24 +1086,15 @@ async def channel_errors(event: lightbulb.CommandErrorEvent) -> bool:
         return False
 
     elif utils.evaluate_exception(exception, lightbulb.MissingRequiredPermission):
-        error_embed = utils.create_error_embed(
-            "You don't have permission to use this command.",
-            utils.get_bot_avatar_url(plugin),
-        )
-        await event.context.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
+        await utils.error_response(
+            event.context, "You don't have permission to use that command."
         )
         return True
 
     elif utils.evaluate_exception(exception, lightbulb.BotMissingRequiredPermission):
-        error_embed = utils.create_error_embed(
-            "I am missing the permissions required to do that.",
-            utils.get_bot_avatar_url(plugin),
-        )
-        await event.context.respond(
-            embed=error_embed,
-            delete_after=utils.DELETE_ERROR_DELAY,
+        await utils.error_response(
+            event.context,
+            "I need permission to manage channels and move members to do that.",
         )
         return True
 
