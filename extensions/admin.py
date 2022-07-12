@@ -1,9 +1,10 @@
 import hikari
 import lightbulb
-import utils
 import typing
 
 from bot import config
+from utils.exceptions import evaluate_exception
+from utils.responses import error_response
 from motor.motor_asyncio import AsyncIOMotorClient
 
 
@@ -49,8 +50,11 @@ async def on_command_error(event: lightbulb.CommandErrorEvent) -> typing.Optiona
     """
     exception = event.exception
 
-    if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
-        await utils.error_response(event.context, "You cannot use this command in DMs.")
+    if evaluate_exception(exception, lightbulb.CommandNotFound):
+        return True
+
+    elif evaluate_exception(exception, lightbulb.OnlyInGuild):
+        await error_response(event.context, "You cannot use this command in DMs.")
         return True
 
     raise exception

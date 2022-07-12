@@ -1,7 +1,7 @@
 import lightbulb
-import utils
 import typing
 
+from utils.responses import info_response
 
 plugin = lightbulb.Plugin("About")
 
@@ -29,7 +29,7 @@ async def about(
         "**Support server**: COMING SOON"
     )
 
-    await utils.info_response(context, "About Campfire", message)
+    await info_response(context, "About Campfire", message)
 
 
 def load(bot: lightbulb.BotApp) -> None:

@@ -1,8 +1,10 @@
 import hikari
 import lightbulb
 import typing
-import utils
 
+from utils.channels import clone_channel
+from utils.exceptions import evaluate_exception
+from utils.responses import info_response, error_response
 
 CHOICES = ["rename", "lock", "unlock", "kick", "ban", "unban"]
 
@@ -52,16 +54,16 @@ async def create_clone(
     Returns:
         The created clone channel.
     """
-    clone_channel = await utils.clone_channel(
+    channel_clone = await clone_channel(
         template_channel, name=f"{owner.username}'s Lobby"
     )
 
     await plugin.bot.d.db_conn.lobby_channels.update_one(
-        {"guild_id": clone_channel.guild_id},
+        {"guild_id": channel_clone.guild_id},
         {
             "$push": {
                 "clones": {
-                    "clone_id": clone_channel.id,
+                    "clone_id": channel_clone.id,
                     "template_id": template_channel.id,
                     "owner_id": owner.id,
                 }
@@ -70,7 +72,7 @@ async def create_clone(
         upsert=True,
     )
 
-    return clone_channel
+    return channel_clone
 
 
 async def get_clone_document(
@@ -647,7 +649,7 @@ async def create(
         None.
     """
     await create_template("New Lobby - Edit me!", context.get_guild())
-    await utils.info_response(
+    await info_response(
         context, "Channel created", "You lobby has been created. Feel free to edit it!"
     )
 
@@ -678,11 +680,11 @@ async def enable(
 
     # Check if the command is already enabled in the guild
     if not await command_is_disabled(command_name, guild):
-        await utils.error_response(context, "That command is already enabled.")
+        await error_response(context, "That command is already enabled.")
         return
 
     await enable_command(command_name, guild)
-    await utils.info_response(
+    await info_response(
         context, "Command enabled", f"The command `{command_name}` has been enabled."
     )
 
@@ -713,11 +715,11 @@ async def disable(
 
     # Check if the command is already disabled in the guild
     if await command_is_disabled(command_name, guild):
-        await utils.error_response(context, "That command is already disabled.")
+        await error_response(context, "That command is already disabled.")
         return
 
     await disable_command(command_name, guild)
-    await utils.info_response(
+    await info_response(
         context, "Command disabled", f"The command `{command_name}` has been disabled."
     )
 
@@ -742,7 +744,7 @@ async def rename(
 
     # Check if the command is disabled in the guild
     if await command_is_disabled("rename", guild):
-        await utils.error_response(context, "Sorry. This command has been disabled.")
+        await error_response(context, "Sorry. This command has been disabled.")
         return
 
     author_member = context.member
@@ -752,7 +754,7 @@ async def rename(
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        await utils.error_response(context, "You are not in a lobby.")
+        await error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
@@ -760,29 +762,27 @@ async def rename(
 
     # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        await utils.error_response(context, "You are not the owner of this lobby")
+        await error_response(context, "You are not the owner of this lobby")
         return
 
     clean_name = context.options.name.strip()
 
     # Check if the desired new name is too long or too short
     if not (1 <= len(clean_name) <= 100):
-        await utils.error_response(
-            context, "The new name must be 1-100 characters long."
-        )
+        await error_response(context, "The new name must be 1-100 characters long.")
         return
 
     lobby = guild.get_channel(author_channel_id)
 
     try:
         await lobby.edit(name=clean_name)
-        await utils.info_response(
+        await info_response(
             context, "Channel renamed", f"The lobby has been renamed to `{clean_name}`."
         )
 
     # Let the command author know if they are being rate limited
     except hikari.errors.RateLimitedError as error:
-        await utils.error_response(
+        await error_response(
             context,
             f"You are being rate limited. Try again in `{int(error.retry_after)}` seconds.",
         )
@@ -807,7 +807,7 @@ async def lock(
 
     # Check if the command is disabled in the guild
     if await command_is_disabled("lock", guild):
-        await utils.error_response(context, "Sorry. This command has been disabled.")
+        await error_response(context, "Sorry. This command has been disabled.")
         return
 
     author_member = context.member
@@ -817,7 +817,7 @@ async def lock(
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        await utils.error_response(context, "You are not in a lobby.")
+        await error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
@@ -825,18 +825,18 @@ async def lock(
 
     # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        await utils.error_response(context, "You are not the owner of this lobby.")
+        await error_response(context, "You are not the owner of this lobby.")
         return
 
     channel = guild.get_channel(author_channel_id)
 
     # Check if the lobby is already locked
     if lobby_is_locked(channel):
-        await utils.error_response(context, "The lobby is already locked.")
+        await error_response(context, "The lobby is already locked.")
         return
 
     await lock_lobby(channel)
-    await utils.info_response(context, "Channel locked", "Your lobby has been locked.")
+    await info_response(context, "Channel locked", "Your lobby has been locked.")
 
 
 @lobby.child
@@ -858,7 +858,7 @@ async def unlock(
 
     # Check if the command is disabled in the guild
     if await command_is_disabled("unlock", guild):
-        await utils.error_response(context, "Sorry. This command has been disabled.")
+        await error_response(context, "Sorry. This command has been disabled.")
         return
 
     author_member = context.member
@@ -868,7 +868,7 @@ async def unlock(
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        await utils.error_response(context, "You are not in a lobby.")
+        await error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
@@ -876,20 +876,18 @@ async def unlock(
 
     # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        await utils.error_response(context, "You are not the owner of this lobby.")
+        await error_response(context, "You are not the owner of this lobby.")
         return
 
     channel = guild.get_channel(author_channel_id)
 
     # Check if the lobby is already unlocked
     if not lobby_is_locked(channel):
-        await utils.error_response(context, "The lobby is already unlocked.")
+        await error_response(context, "The lobby is already unlocked.")
         return
 
     await unlock_lobby(channel)
-    await utils.info_response(
-        context, "Channel unlocked", "Your lobby has been unlocked."
-    )
+    await info_response(context, "Channel unlocked", "Your lobby has been unlocked.")
 
 
 @lobby.child
@@ -912,7 +910,7 @@ async def kick(
 
     # Check if the command is disabled in the guild
     if await command_is_disabled("kick", guild):
-        await utils.error_response(context, "Sorry. This command has been disabled.")
+        await error_response(context, "Sorry. This command has been disabled.")
         return
 
     author_member = context.member
@@ -922,7 +920,7 @@ async def kick(
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        await utils.error_response(context, "You are not in a lobby.")
+        await error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
@@ -930,7 +928,7 @@ async def kick(
 
     # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        await utils.error_response(context, "You are not the owner of this lobby.")
+        await error_response(context, "You are not the owner of this lobby.")
         return
 
     target_member = context.options.member
@@ -938,11 +936,11 @@ async def kick(
 
     # Check if the target is not in the lobby
     if target_voice_state is None or author_channel_id != target_voice_state.channel_id:
-        await utils.error_response(context, "That member is not in the lobby.")
+        await error_response(context, "That member is not in the lobby.")
         return
 
     await target_member.edit(voice_channel=None)
-    await utils.info_response(
+    await info_response(
         context,
         "Member kicked",
         f"`{target_member.username}` has been kicked from the lobby.",
@@ -969,7 +967,7 @@ async def ban(
 
     # Check if the command is disabled in the guild
     if await command_is_disabled("ban", guild):
-        await utils.error_response(context, "Sorry. This command has been disabled.")
+        await error_response(context, "Sorry. This command has been disabled.")
         return
 
     author_member = context.member
@@ -979,7 +977,7 @@ async def ban(
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        await utils.error_response(context, "You are not in a lobby.")
+        await error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
@@ -987,7 +985,7 @@ async def ban(
 
     # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        await utils.error_response(context, "You are not the owner of this lobby.")
+        await error_response(context, "You are not the owner of this lobby.")
         return
 
     author_channel = guild.get_channel(author_channel_id)
@@ -996,7 +994,7 @@ async def ban(
 
     # Check if the target is already banned in the lobby
     if member_is_banned(author_channel, target_member):
-        await utils.error_response(context, "That member is already banned.")
+        await error_response(context, "That member is already banned.")
         return
 
     if (
@@ -1006,7 +1004,7 @@ async def ban(
         await target_member.edit(voice_channel=None)
 
     await ban_member(author_channel, target_member)
-    await utils.info_response(
+    await info_response(
         context,
         "Member banned",
         f"`{target_member.username}` has been banned from the lobby.",
@@ -1033,7 +1031,7 @@ async def unban(
 
     # Check if the command is disabled in the guild
     if await command_is_disabled("unban", guild):
-        await utils.error_response(context, "Sorry. This command has been disabled.")
+        await error_response(context, "Sorry. This command has been disabled.")
         return
 
     author_member = context.member
@@ -1043,7 +1041,7 @@ async def unban(
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):
-        await utils.error_response(context, "You are not in a lobby.")
+        await error_response(context, "You are not in a lobby.")
         return
 
     author_channel_id = author_voice_state.channel_id
@@ -1051,7 +1049,7 @@ async def unban(
 
     # Check if the command author is not the owner of the lobby they are in
     if document["clones"]["owner_id"] != author_member.id:
-        await utils.error_response(context, "You are not the owner of this lobby.")
+        await error_response(context, "You are not the owner of this lobby.")
         return
 
     author_channel = guild.get_channel(author_channel_id)
@@ -1059,11 +1057,11 @@ async def unban(
 
     # Check if the target is not already banned in the lobby
     if not member_is_banned(author_channel, target_member):
-        await utils.error_response(context, "That member is not banned.")
+        await error_response(context, "That member is not banned.")
         return
 
     await unban_member(author_channel, target_member)
-    await utils.info_response(
+    await info_response(
         context,
         "Member unbanned",
         f"`{target_member.username}` has been unbanned from the lobby.",
@@ -1082,17 +1080,17 @@ async def channel_errors(event: lightbulb.CommandErrorEvent) -> bool:
     """
     exception = event.exception
 
-    if utils.evaluate_exception(exception, lightbulb.OnlyInGuild):
+    if evaluate_exception(exception, lightbulb.OnlyInGuild):
         return False
 
-    elif utils.evaluate_exception(exception, lightbulb.MissingRequiredPermission):
-        await utils.error_response(
+    elif evaluate_exception(exception, lightbulb.MissingRequiredPermission):
+        await error_response(
             event.context, "You don't have permission to use that command."
         )
         return True
 
-    elif utils.evaluate_exception(exception, lightbulb.BotMissingRequiredPermission):
-        await utils.error_response(
+    elif evaluate_exception(exception, lightbulb.BotMissingRequiredPermission):
+        await error_response(
             event.context,
             "I need permission to manage channels and move members to do that.",
         )

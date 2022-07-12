@@ -1,7 +1,8 @@
 import hikari
 import lightbulb
-import utils
 import typing
+
+from utils.responses import create_info_embed
 
 
 plugin = lightbulb.Plugin("Profile")
@@ -99,7 +100,7 @@ async def profile(
         target_data["upvotes"], target_data["downvotes"]
     )
 
-    profile_embed = utils.create_info_embed(
+    profile_embed = create_info_embed(
         f"{target_data['name']}'s Profile",
         f"Here are some details about `{target_data['name']}`",
         context.app.get_me().avatar_url,

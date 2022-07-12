@@ -1,8 +1,8 @@
 import hikari
 import lightbulb
-import utils
 import typing
 
+from utils.responses import create_info_embed, info_response, error_response
 from datetime import datetime, timezone
 from hikari.messages import ButtonStyle
 from lightbulb.utils.permissions import permissions_for
@@ -80,7 +80,7 @@ async def paginate_all_tags(
     @paginator.embed_factory()
     def build_embed(index, content):
         """Specify how embed paginator builds the embed"""
-        embed = utils.create_info_embed(
+        embed = create_info_embed(
             "Tag list",
             f"Here is a list of tags. Use `/tag show [tag]` to view its contents. {content}",
             plugin.app.get_me().avatar_url,
@@ -342,7 +342,7 @@ async def show(
 
     # Check if there is no existing tag
     if document is None:
-        await utils.error_response(context, "That tag does not exist.")
+        await error_response(context, "That tag does not exist.")
         return
 
     await increment_tag(tag_name, tag_guild)
@@ -373,25 +373,25 @@ async def create(
 
     # Check if there is already an existing tag
     if await get_tag(tag_name, tag_guild) is not None:
-        await utils.error_response(context, "That tag already exists.")
+        await error_response(context, "That tag already exists.")
         return
 
     # Check if the desired tag name is greater than 54 characters long
     if len(tag_name) > 54:
-        await utils.error_response(
+        await error_response(
             context, "The tag name must be less than 54 characters long."
         )
         return
 
     # Check if the desired tag content is greater than 2000 characters long
     if len(tag_content) > 2000:
-        await utils.error_response(
+        await error_response(
             context, "The tag content must be less than 2000 characters long."
         )
         return
 
     await create_tag(tag_name, tag_content, context.author, tag_guild)
-    await utils.info_response(
+    await info_response(
         context,
         "Tag created",
         f"Your tag has been successfully created. \nUse `/tag show {tag_name}` to view it.",
@@ -422,7 +422,7 @@ async def delete(
 
     # Check if there is no existing tag
     if document is None:
-        await utils.error_response(context, "That tag does not exist.")
+        await error_response(context, "That tag does not exist.")
         return
 
     # Check if the author does not own or have the permissions to delete the tag
@@ -430,13 +430,11 @@ async def delete(
         tag_author.id != document["tags"]["author_id"]
         and not permissions_for(tag_author) & hikari.Permissions.MANAGE_MESSAGES
     ):
-        await utils.error_response(
-            context, "You don't have permission to delete that tag."
-        )
+        await error_response(context, "You don't have permission to delete that tag.")
         return
 
     await delete_tag(tag_name, tag_guild)
-    await utils.info_response(
+    await info_response(
         context, "Tag deleted", f"The tag `{tag_name}` has been successfully deleted."
     )
 
@@ -465,18 +463,16 @@ async def edit(
 
     # Check if there is no existing tag
     if document is None:
-        await utils.error_response(context, "That tag does not exist.")
+        await error_response(context, "That tag does not exist.")
         return
 
     # Check if the author does not own the tag
     if context.author.id != document["tags"]["author_id"]:
-        await utils.error_response(
-            context, "You don't have permission to edit that tag."
-        )
+        await error_response(context, "You don't have permission to edit that tag.")
         return
 
     await edit_tag(tag_name, context.options.content, tag_guild)
-    await utils.info_response(
+    await info_response(
         context, "Tag updated", f"The tag `{tag_name}` has been successfully updated."
     )
 
@@ -503,14 +499,14 @@ async def info(
 
     # Check if there is no existing tag
     if document is None:
-        await utils.error_response(context, "That tag does not exist.")
+        await error_response(context, "That tag does not exist.")
         return
 
     tag_data = extract_tag_details(document)
-    info_embed = utils.create_info_embed(
+    info_embed = create_info_embed(
         "Tag info",
         f"Use `/tag show {tag_name}` to view its contents.",
-        utils.get_bot_avatar_url(plugin),
+        context.app.get_me().avatar_url,
     )
 
     info_embed.add_field("Name", tag_name, inline=True)
@@ -547,7 +543,7 @@ async def list(
 
     # Check if there are no tags to display
     if not await guild_has_tags(tag_author, tag_guild):
-        await utils.error_response(context, "There are no tags to display.")
+        await error_response(context, "There are no tags to display.")
         return
 
     paginator = await paginate_all_tags(tag_author, tag_guild)

@@ -1,7 +1,8 @@
 import hikari
 import lightbulb
-import utils
 import typing
+
+from utils.responses import info_response, error_response
 
 
 plugin = lightbulb.Plugin("Reputation")
@@ -110,16 +111,16 @@ async def upvote(
 
     # Check if the target is the author
     if voter_member.id == target_member.id:
-        await utils.error_response(context, "You cannot vote for yourself.")
+        await error_response(context, "You cannot vote for yourself.")
         return
 
     # Check if the target has already been upvoted by the author
     if voter_member.id in await get_upvotes(target_member.id):
-        await utils.error_response(context, "You have already upvoted that member.")
+        await error_response(context, "You have already upvoted that member.")
         return
 
     await upvote_member(voter_member.id, target_member.id)
-    await utils.info_response(
+    await info_response(
         context, "Member upvoted", f"You have upvoted {target_member.mention}"
     )
 
@@ -145,16 +146,16 @@ async def downvote(
 
     # Check if the target is the author
     if voter_member.id == target_member.id:
-        await utils.error_response(context, "You cannot vote for yourself.")
+        await error_response(context, "You cannot vote for yourself.")
         return
 
     # Check if the target has already been downvoted by the author
     if voter_member.id in await get_downvotes(target_member.id):
-        await utils.error_response(context, "You have already downvoted that member.")
+        await error_response(context, "You have already downvoted that member.")
         return
 
     await downvote_member(voter_member.id, target_member.id)
-    await utils.info_response(
+    await info_response(
         context, "Member downvoted", f"You have downvoted {target_member.mention}"
     )
 
