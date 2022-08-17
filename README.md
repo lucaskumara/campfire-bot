@@ -41,3 +41,4 @@ The application will be moved to production and released publicly once 3 feature
 - [x] Reputation
 - [ ] Server Stats
 - [ ] Birthdays
+- [ ] Movie Night Event Planner
