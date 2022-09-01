@@ -1,8 +1,8 @@
 import hikari
 import lightbulb
 import typing
+import os
 
-from bot import config
 from utils.exceptions import evaluate_exception
 from utils.responses import error_response
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -21,7 +21,7 @@ async def open_database_connection(event: hikari.StartingEvent) -> None:
     Returns:
         None.
     """
-    plugin.bot.d.db_client = AsyncIOMotorClient(config.get("BOT", "DATABASE_URI"))
+    plugin.bot.d.db_client = AsyncIOMotorClient(os.getenv("DATABASE_URI"))
     plugin.bot.d.db_conn = plugin.bot.d.db_client["campfire"]
 
 

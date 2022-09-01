@@ -1,32 +1,30 @@
 # Campfire
 
-A utility discord bot created with the goal of enhancing the list of features available to users who manage discord servers.
+A community focused utility discord bot created with the goal of enhancing the list of available features for server managers.
 
-This version of the Campfire discord bot written using the hikari and hikari-lightbulb libraries as opposed to the discord.py library used in the original.
-
-The project was formally revitalized in November 2021 and is still in development as a side project for the time being.
-
-## Usage
+## Setup
 
 Python 3.8, 3.9 and 3.10 are currently the only supported versions.
 
-Upon cloning the repository, you will need to create a `config.ini` file and install the project dependencies. Dependencies should be installed from `requirements.txt` using `pip install -r requirements.txt`
+Upon cloning the repository, you will need to create a `.env` file to set your environment variables and install the project dependencies. 
 
-### Config File
+### Python Dependencies
 
-The config file has a `[BOT]` section that contains values critical to the operation of the application.
+You may wish to create a virtual environment prior to installing dependencies. Dependencies should be installed from `requirements.txt` using `pip install -r requirements.txt`
 
-```ini
-[BOT]
+### Environment Variables
+
+The .env file should simply contain the application token to be used by the bot.
+
+```
 TOKEN=... # Discord Application Token
-DATABASE_URI=... # MongoDB Database URL
 ```
 
 Application tokens can be obtained at https://discord.com/developers/
 
-### Running the bot
+## Running the bot
 
-To run the bot, simply run the `bot.py` file. Please note this should only be done after installing dependencies and creating your `config.ini` file.
+To run the bot, simply run the `bot.py` file located in the root folder. Please note this should only be done after following the setup instructions listed above.
 
 ```bash
 $ python3 bot.py
@@ -34,11 +32,8 @@ $ python3 bot.py
 
 ## Planned Features
 
-The application will be moved to production and released publicly once 3 features have been implemented to an acceptable degree of completion.
-
 - [x] Tags
 - [x] Custom Lobbies
 - [x] Reputation
 - [ ] Server Stats
 - [ ] Birthdays
-- [ ] Movie Night Event Planner

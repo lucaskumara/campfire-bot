@@ -1,15 +1,15 @@
 import hikari
 import lightbulb
-import configparser
+import os
 
+from dotenv import load_dotenv
 
-config = configparser.ConfigParser()
-config.read("config.ini")
+load_dotenv()
 
 
 if __name__ == "__main__":
     bot = lightbulb.BotApp(
-        token=config.get("BOT", "TOKEN"),
+        token=os.getenv("TOKEN"),
         prefix=lightbulb.when_mentioned_or(["campfire ", "camp "]),
     )
 
