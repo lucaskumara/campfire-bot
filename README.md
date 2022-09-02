@@ -24,7 +24,7 @@ Application tokens can be obtained at https://discord.com/developers/
 
 ## Running the bot
 
-To run the bot, simply run the `bot.py` file located in the root folder. Please note this should only be done after following the setup instructions listed above.
+To run the bot, simply run `campfire/bot.py`. Please note this should only be done after following the setup instructions listed above.
 
 ```bash
 $ python3 bot.py
