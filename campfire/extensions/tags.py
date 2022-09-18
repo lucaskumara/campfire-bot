@@ -19,7 +19,7 @@ plugin = lightbulb.Plugin("Tags")
 
 
 async def guild_has_tags(
-    tag_author: hikari.User,
+    tag_author: typing.Optional[hikari.User],
     tag_guild: hikari.GatewayGuild,
 ) -> bool:
     """Checks if the guild has any tags in it.
@@ -59,7 +59,7 @@ async def guild_has_tags(
 
 
 async def paginate_all_tags(
-    tag_author: hikari.User, tag_guild: hikari.GatewayGuild
+    tag_author: typing.Optional[hikari.User], tag_guild: hikari.GatewayGuild
 ) -> EmbedPaginator:
     """Adds guild tags to the paginator.
 
