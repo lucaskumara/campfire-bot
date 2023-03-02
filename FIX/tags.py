@@ -2,18 +2,17 @@ import hikari
 import lightbulb
 import typing
 
-from utils.responses import create_info_embed, info_response, error_response
 from datetime import datetime, timezone
 from hikari.messages import ButtonStyle
-from lightbulb.utils.permissions import permissions_for
-from lightbulb.utils.pag import EmbedPaginator
 from lightbulb.utils.nav import (
     ComponentButton as Button,
     ButtonNavigator,
     prev_page,
     next_page,
 )
-
+from lightbulb.utils.pag import EmbedPaginator
+from lightbulb.utils.permissions import permissions_for
+from utils.responses import create_info_embed, info_response, error_response
 
 plugin = lightbulb.Plugin("Tags")
 
@@ -556,12 +555,4 @@ async def list(
 
 
 def load(bot: lightbulb.BotApp) -> None:
-    """Loads the 'Tags' plugin. Called when extension is loaded.
-
-    Arguments:
-        bot: The bot application to add the plugin to.
-
-    Returns:
-        None.
-    """
     bot.add_plugin(plugin)
