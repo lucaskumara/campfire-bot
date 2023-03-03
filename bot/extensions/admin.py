@@ -2,8 +2,9 @@ import hikari
 import lightbulb
 import os
 
-from utils.exceptions import evaluate_exception
-from utils.responses import error_response
+import campfire.exceptions as exceptions
+import campfire.responses as responses
+
 from motor.motor_asyncio import AsyncIOMotorClient
 
 plugin = lightbulb.Plugin("Admin")
@@ -45,11 +46,11 @@ async def handle_error(
     Returns:
         True if the exception can be handled, false if not.
     """
-    if evaluate_exception(error, lightbulb.CommandNotFound):
+    if exceptions.evaluate_exception(error, lightbulb.CommandNotFound):
         return True
 
-    elif evaluate_exception(error, lightbulb.OnlyInGuild):
-        await error_response(context, "You cannot use this command in DMs.")
+    elif exceptions.evaluate_exception(error, lightbulb.OnlyInGuild):
+        await responses.error(context, "You cannot use this command in DMs.")
         return True
 
     raise error
