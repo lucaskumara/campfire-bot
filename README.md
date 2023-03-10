@@ -37,4 +37,6 @@ $ python3 bot.py
 - [ ] Server Stats
 - [ ] Birthdays
 
+### Old
+
 - [ ] Reputation    (Was previously implemented but has been temporarily removed due to poor implementation)
