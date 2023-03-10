@@ -14,20 +14,21 @@ You may wish to create a virtual environment prior to installing dependencies. D
 
 ### Environment Variables
 
-The .env file should simply contain the application token to be used by the bot.
+The .env file should simply contain the bot application token and the connection string for the mongo database.
 
 ```
-TOKEN=... # Discord Application Token
+TOKEN=...           # Discord Application Token
+DATABASE_URI=...    # MongoDB Connection String
 ```
 
 Application tokens can be obtained at https://discord.com/developers/
 
 ## Running the bot
 
-To run the bot, simply run `campfire/bot.py`. Please note this should only be done after following the setup instructions listed above.
+To run the bot, simply run the `bot.py` file in the `bot` directory. Please note this should only be done after following the setup instructions listed above.
 
 ```bash
-$ python3 bot.py
+$ python3 -O bot.py
 ```
 
 ## Planned Features

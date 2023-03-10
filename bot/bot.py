@@ -8,7 +8,7 @@ load_dotenv()
 
 if __name__ == "__main__":
     bot = lightbulb.BotApp(
-        token=os.getenv("DEVELOPMENT_TOKEN"),
+        token=os.getenv("TOKEN"),
         prefix=lightbulb.when_mentioned_or(["campfire ", "camp "]),
     )
 
