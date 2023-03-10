@@ -1,6 +1,6 @@
 # Campfire
 
-A community focused utility discord bot created with the goal of enhancing the list of available features for server managers.
+A community focused discord bot created with the goal of enhancing the list of available features for server managers.
 
 ## Setup
 
