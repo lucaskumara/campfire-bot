@@ -4,7 +4,7 @@ A community focused utility discord bot created with the goal of enhancing the l
 
 ## Setup
 
-Python 3.8, 3.9 and 3.10 are currently the only supported versions.
+This bot depends on the python module `hikari`. A list of supported python versions can be found here https://github.com/hikari-py/hikari
 
 Upon cloning the repository, you will need to create a `.env` file to set your environment variables and install the project dependencies. 
 
@@ -34,6 +34,7 @@ $ python3 bot.py
 
 - [x] Tags
 - [x] Custom Lobbies
-- [x] Reputation
 - [ ] Server Stats
 - [ ] Birthdays
+
+- [ ] Reputation    (Was previously implemented but has been temporarily removed due to poor implementation)
