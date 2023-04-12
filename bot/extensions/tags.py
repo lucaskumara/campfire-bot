@@ -1,8 +1,8 @@
 import hikari
 import lightbulb
 
-import campfire.tags as tags
 import campfire.responses as responses
+import campfire.tags as tags
 
 from lightbulb.utils.permissions import permissions_for
 
@@ -22,19 +22,19 @@ async def purge_old_guilds() -> None:
         try:
             await plugin.bot.rest.fetch_guild(int(guild_id))
         except:
-            await tags.delete_all_tags({"guild_id": guild_id})
+            await tags.delete_all_tags(plugin.bot, guild_id)
 
 
-async def purge_guild(tag_guild: hikari.Guild) -> None:
+async def purge_guild(tag_guild_id: hikari.Snowflake) -> None:
     """Delete all tags from a guild.
 
     Arguments:
-        tag_guild: The guild of the tag.
+        tag_guild_id: The guild ID of the tag.
 
     Returns:
         None.
     """
-    await tags.delete_all_tags({"guild_id": str(tag_guild.id)})
+    await tags.delete_all_tags(plugin.bot, tag_guild_id)
 
 
 async def show_tag(

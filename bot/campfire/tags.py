@@ -10,7 +10,6 @@ class Tag:
 
     Arguments:
         document: The queried document to represent as a tag.
-        rest_client: The REST client associated with the bot.
 
     Attributes:
         _name: The name of the tag.
@@ -22,7 +21,7 @@ class Tag:
         _uses: The number of times the tag was used.
     """
 
-    def __init__(self, document: dict, rest_client: hikari.api.RESTClient) -> None:
+    def __init__(self, document: dict) -> None:
         self._name = document["name"]
         self._content = document["content"]
         self._guild_id = int(document["guild_id"])
@@ -30,8 +29,6 @@ class Tag:
         self._created_date = document["created_at"]
         self._modified_date = document["modified_at"]
         self._uses = document["uses"]
-
-        self._rest_client = rest_client
 
     def get_name(self) -> str:
         """Retrieves the tag name."""
@@ -41,13 +38,13 @@ class Tag:
         """Retrieves the tag content."""
         return self._content
 
-    async def get_guild(self) -> hikari.Guild:
-        """Retrieves the tag guild using the guild ID."""
-        return await self._rest_client.fetch_guild(self._guild_id)
+    def get_guild(self) -> hikari.Guild:
+        """Retrieves the tag guild ID."""
+        return self._guild_id
 
-    async def get_author(self) -> hikari.User:
-        """Retrieves the tag author using the author ID."""
-        return await self._rest_client.fetch_user(self._author_id)
+    def get_author(self) -> hikari.User:
+        """Retrieves the tag author ID."""
+        return self._author_id
 
     def get_created_date(self) -> datetime:
         """Retrieves the date the tag was created."""
@@ -65,8 +62,6 @@ class Tag:
         self, embed_title: str, embed_description: str, embed_icon_url: hikari.URL
     ) -> hikari.Embed:
         """Returns an embed containing tag information."""
-        tag_author = await self.get_author()
-
         return responses.build_embed(
             embed_title,
             embed_description,
@@ -74,7 +69,7 @@ class Tag:
             responses.INFO_MESSAGE_COLOUR,
             [
                 responses.Field("Name", self._name, True),
-                responses.Field("Author", tag_author.mention, True),
+                responses.Field("Author", f"<@{self._author_id}>", True),
                 responses.Field("Uses", self._uses, True),
                 responses.Field("Created at", self._created_date, True),
                 responses.Field("Modified at", self._modified_date, True),
@@ -85,69 +80,71 @@ class Tag:
 async def get_tag(
     bot: hikari.GatewayBot,
     tag_name: str,
-    tag_guild: hikari.Guild,
+    tag_guild_id: hikari.Snowflake,
 ) -> Tag | None:
     """Gets a tag.
 
     Arguments:
         bot: The bot instance.
         tag_name: The name of the tag.
-        tag_guild: The guild of the tag.
+        tag_guild_id: The guild ID of the tag.
 
     Returns:
         The Tag object otherwise None.
     """
     collection = bot.d.mongo_database.tags
     document = await collection.find_one(
-        {"name": tag_name, "guild_id": str(tag_guild.id)}
+        {"name": tag_name, "guild_id": str(tag_guild_id)}
     )
 
-    return Tag(document, bot.rest) if document is not None else None
+    return Tag(document) if document is not None else None
 
 
-async def get_tags(bot: hikari.GatewayBot, tag_guild: hikari.Guild) -> list[Tag]:
+async def get_tags(bot: hikari.GatewayBot, tag_guild_id: hikari.Snowflake) -> list[Tag]:
     """Gets multiple tags.
 
     Arguments:
         bot: The bot instance.
-        tag_guild: The guild of the tags.
+        tag_guild_id: The guild ID of the tags.
 
     Returns:
         A list of Tag objects.
     """
     collection = bot.d.mongo_database.tags
-    cursor = collection.find({"guild_id": str(tag_guild.id)})
+    cursor = collection.find({"guild_id": str(tag_guild_id)})
 
-    return [Tag(document, bot.rest) async for document in cursor]
+    return [Tag(document) async for document in cursor]
 
 
 async def get_tags_by_author(
-    bot: hikari.GatewayBot, tag_guild: hikari.Guild, tag_author: hikari.User
+    bot: hikari.GatewayBot,
+    tag_guild_id: hikari.Snowflake,
+    tag_author_id: hikari.Snowflake,
 ) -> None:
     """Gets multiple tags authored by a specific user.
 
     Arguments:
         bot: The bot instance.
-        tag_guild: The guild of the tags.
-        tag_author: The author of the tags.
+        tag_guild_id: The guild ID of the tags.
+        tag_author_id: The author ID of the tags.
 
     Returns:
         A list of Tag objects.
     """
     collection = bot.d.mongo_database.tags
     cursor = collection.find(
-        {"guild_id": str(tag_guild.id), "author_id": str(tag_author.id)}
+        {"guild_id": str(tag_guild_id), "author_id": str(tag_author_id)}
     )
 
-    return [Tag(document, bot.rest) async for document in cursor]
+    return [Tag(document) async for document in cursor]
 
 
 async def create_tag(
     bot: hikari.GatewayBot,
     tag_name: str,
     tag_content: str,
-    tag_guild: hikari.Guild,
-    tag_author: hikari.User,
+    tag_guild_id: hikari.Snowflake,
+    tag_author_id: hikari.Snowflake,
 ) -> None:
     """Creates a new tag.
 
@@ -155,8 +152,8 @@ async def create_tag(
         bot: The bot instance.
         tag_name: The name of the tag.
         tag_content: The content of the tag.
-        tag_guild: The guild of the tag.
-        tag_author: The author of the tag.
+        tag_guild_id: The guild ID of the tag.
+        tag_author_id: The author ID of the tag.
 
     Returns:
         None.
@@ -168,8 +165,8 @@ async def create_tag(
         {
             "name": tag_name,
             "content": tag_content,
-            "guild_id": str(tag_guild.id),
-            "author_id": str(tag_author.id),
+            "guild_id": str(tag_guild_id),
+            "author_id": str(tag_author_id),
             "created_at": creation_time,
             "modified_at": creation_time,
             "uses": 0,
@@ -181,7 +178,7 @@ async def edit_tag(
     bot: hikari.GatewayBot,
     tag_name: str,
     tag_content: str,
-    tag_guild: hikari.Guild,
+    tag_guild_id: hikari.Snowflake,
 ) -> None:
     """Edits an existing tag.
 
@@ -189,7 +186,7 @@ async def edit_tag(
         bot: The bot instance.
         tag_name: The name of the tag.
         tag_content: The new content of the tag.
-        tag_guild: The guild of the tag.
+        tag_guild_id: The guild ID of the tag.
 
     Returns:
         None.
@@ -198,7 +195,7 @@ async def edit_tag(
     modification_time = datetime.now(timezone.utc)
 
     await collection.update_one(
-        {"name": tag_name, "guild_id": str(tag_guild.id)},
+        {"name": tag_name, "guild_id": str(tag_guild_id)},
         {"$set": {"content": tag_content, "modified_at": modification_time}},
     )
 
@@ -206,49 +203,51 @@ async def edit_tag(
 async def delete_tag(
     bot: hikari.GatewayBot,
     tag_name: str,
-    tag_guild: hikari.Guild,
+    tag_guild_id: hikari.Snowflake,
 ) -> None:
     """Deletes an existing tag.
 
     Arguments:
         bot: The bot instance.
         tag_name: The name of the tag.
-        tag_guild: The guild of the tag.
+        tag_guild_id: The guild ID of the tag.
 
     Returns:
         None.
     """
     collection = bot.d.mongo_database.tags
 
-    await collection.delete_one({"name": tag_name, "guild_id": str(tag_guild.id)})
+    await collection.delete_one({"name": tag_name, "guild_id": str(tag_guild_id)})
 
 
-async def delete_all_tags(bot: hikari.GatewayBot, tag_guild: hikari.Guild) -> None:
-    """Deletes all guild tags.
+async def delete_all_tags(
+    bot: hikari.GatewayBot, tag_guild_id: hikari.Snowflake
+) -> None:
+    """Deletes all tags for a guild.
 
     Arguments:
         bot: The bot instance.
-        tag_guild: The guild of the tag.
+        tag_guild_id: The guild ID of the tag.
 
     Returns:
         None.
     """
     collection = bot.d.mongo_database.tags
 
-    await collection.delete_many({"guild_id": str(tag_guild.id)})
+    await collection.delete_many({"guild_id": str(tag_guild_id)})
 
 
 async def increment_tag(
     bot: hikari.GatewayBot,
     tag_name: str,
-    tag_guild: hikari.Guild,
+    tag_guild_id: hikari.Snowflake,
 ) -> None:
     """Increments a tags uses by 1.
 
     Arguments:
         bot: The bot instance.
         tag_name: The name of the tag.
-        tag_guild: The guild of the tag.
+        tag_guild_id: The guild ID of the tag.
 
     Returns:
         None.
@@ -256,37 +255,39 @@ async def increment_tag(
     collection = bot.d.mongo_database.tags
 
     await collection.update_one(
-        {"name": tag_name, "guild_id": str(tag_guild.id)},
+        {"name": tag_name, "guild_id": str(tag_guild_id)},
         {"$inc": {"uses": 1}},
     )
 
 
-async def guild_tag_count(bot: hikari.GatewayBot, tag_guild: hikari.Guild) -> int:
+async def guild_tag_count(
+    bot: hikari.GatewayBot, tag_guild_id: hikari.Snowflake
+) -> int:
     """Counts the number of tags in a guild.
 
     Arguments:
         bot: The bot instance.
-        tag_guild: The guild to count the tags of.
+        tag_guild_id: The guild to count the tags of.
 
     Returns:
         The number of tags.
     """
     collection = bot.d.mongo_database.tags
 
-    return await collection.count_documents({"guild_id": str(tag_guild.id)})
+    return await collection.count_documents({"guild_id": str(tag_guild_id)})
 
 
 async def guild_tag_count_by_author(
     bot: hikari.GatewayBot,
-    tag_guild: hikari.Guild,
-    tag_author: hikari.User,
+    tag_guild_id: hikari.Snowflake,
+    tag_author_id: hikari.Snowflake,
 ) -> int:
     """Counts the number of tags in a guild authored by a specific user.
 
     Arguments:
         bot: The bot instance.
-        tag_guild: The guild to count the tags of.
-        tag_author: The author of the tags.
+        tag_guild_id: The guild ID to count the tags of.
+        tag_author_id: The author ID of the tags.
 
     Returns:
         The number of tags.
@@ -294,5 +295,5 @@ async def guild_tag_count_by_author(
     collection = bot.d.mongo_database.tags
 
     return await collection.count_documents(
-        {"guild_id": str(tag_guild.id), "author_id": str(tag_author.id)}
+        {"guild_id": str(tag_guild_id), "author_id": str(tag_author_id)}
     )
