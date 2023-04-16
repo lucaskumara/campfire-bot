@@ -10,6 +10,7 @@ if __name__ == "__main__":
     bot = lightbulb.BotApp(
         token=os.getenv("TOKEN"),
         prefix=lightbulb.when_mentioned_or(["campfire ", "camp "]),
+        intents=hikari.Intents.ALL,
     )
 
     bot.load_extensions_from("./extensions")
