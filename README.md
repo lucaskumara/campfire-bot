@@ -1,6 +1,6 @@
 # Campfire
 
-A community focused discord bot created with the goal of enhancing the list of available features for server managers.
+A utility discord bot created with the goal of enhancing the list of available features for community server managers.
 
 ## Setup
 
@@ -14,14 +14,16 @@ You may wish to create a virtual environment prior to installing dependencies. D
 
 ### Environment Variables
 
-The .env file should simply contain the bot application token and the connection string for the mongo database.
+The .env file needs to contain the following variables.
 
 ```
 TOKEN=...           # Discord Application Token
 DATABASE_URI=...    # MongoDB Connection String
+OPENAI_KEY=...      # OpenAI Secret Key
 ```
 
-Application tokens can be obtained at https://discord.com/developers/
+Discord application tokens can be obtained at https://discord.com/developers/
+OpenAI secret keys can be obtained at https://platform.openai.com/account/api-keys
 
 ## Running the bot
 
@@ -35,6 +37,7 @@ $ python3 -O bot.py
 
 - [x] Tags
 - [x] Custom Lobbies
+- [x] Profanity Filter
 - [ ] Server Stats
 - [ ] Birthdays
 
