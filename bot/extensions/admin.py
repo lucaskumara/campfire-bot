@@ -2,8 +2,8 @@ import hikari
 import lightbulb
 import os
 
-import campfire.exceptions as exceptions
-import campfire.responses as responses
+import lib.exceptions as exceptions
+import lib.responses as responses
 
 from motor.motor_asyncio import AsyncIOMotorClient
 

@@ -1,8 +1,8 @@
 import hikari
 import lightbulb
 
-import campfire.tags as tags
-import campfire.responses as responses
+import lib.tags as tags
+import lib.responses as responses
 
 from lightbulb.utils.permissions import permissions_for
 

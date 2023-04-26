@@ -1,9 +1,9 @@
 import hikari
 import lightbulb
 
-import campfire.openai as openai
-import campfire.profanity as profanity
-import campfire.responses as responses
+import lib.openai as openai
+import lib.profanity as profanity
+import lib.responses as responses
 
 plugin = lightbulb.Plugin("Profanity Filter")
 

@@ -750,7 +750,7 @@ async def rename(
     author_member = context.member
     author_voice_state = guild.get_voice_state(author_member)
 
-    # Check if the command author is not a lobby channel
+    # Check if the command author is not in a lobby channel
     if author_voice_state is None or not await valid_clone(
         author_voice_state.channel_id
     ):

@@ -1,6 +1,6 @@
 import hikari
 
-import campfire.responses as responses
+import lib.responses as responses
 
 from datetime import datetime, timezone
 
