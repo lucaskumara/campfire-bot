@@ -19,7 +19,7 @@ The .env file needs to contain the following variables.
 ```
 TOKEN=...           # Discord Application Token
 DATABASE_URI=...    # MongoDB Connection String
-OPENAI_KEY=...      # OpenAI Secret Key
+OPENAI_API_KEY=...      # OpenAI Secret Key
 ```
 
 Discord application tokens can be obtained at https://discord.com/developers/

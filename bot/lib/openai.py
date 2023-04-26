@@ -1,8 +1,6 @@
 import openai
 import os
 
-openai.api_key = os.getenv("OPENAI_KEY")
-
 
 def prompt(message: str) -> str:
     """Prompts ChatGPT and returns its response.
