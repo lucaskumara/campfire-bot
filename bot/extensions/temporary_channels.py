@@ -1,37 +1,71 @@
 import hikari
 import lightbulb
 
+import lib.channels as channels
+import lib.responses as responses
+
 plugin = lightbulb.Plugin("Temporary Channels")
 
 
 @plugin.listener(hikari.StartedEvent)
 async def remove_old_data(event: hikari.StartedEvent) -> None:
-    pass
+    collection = plugin.bot.d.mongo_database.channels
+    documents = await channels.get_all_documents(plugin.bot.d.mongo_database.channels)
+
+    for document in documents:
+        try:
+            await plugin.bot.rest.fetch_channel(document["channel_id"])
+        except:
+            await channels.delete_template(collection, document["channel_id"])
+            await channels.delete_clone(collection, document["channel_id"])
 
 
 @plugin.listener(hikari.GuildLeaveEvent)
 async def remove_guild_data(event: hikari.GuildLeaveEvent) -> None:
-    pass
+    collection = plugin.bot.d.mongo_database.channels
+
+    await channels.delete_guild_data(collection, event.guild_id)
 
 
 @plugin.listener(hikari.GuildChannelDeleteEvent)
 async def remove_guild_channel_data(event: hikari.GuildChannelDeleteEvent) -> None:
-    pass
+    collection = plugin.bot.d.mongo_database.channels
+
+    await channels.delete_template(collection, event.channel_id)
+    await channels.delete_clone(collection, event.channel_id)
 
 
 @plugin.listener(hikari.VoiceStateUpdateEvent)
-async def template_member_join(event):
-    pass
+async def template_member_join(event: hikari.VoiceStateUpdateEvent) -> None:
+    if not channels.joined_a_channel(event.state):
+        return
+
+    collection = plugin.bot.d.mongo_database.channels
+    channel = await plugin.bot.rest.fetch_channel(event.state.channel_id)
+    template = await channels.TemplateChannel.get(collection, channel)
+
+    if template is None:
+        return
+
+    clone = await template.spawn_clone(event.state.member, "Lobby")
+
+    await event.state.member.edit(voice_channel=clone.channel)
 
 
 @plugin.listener(hikari.VoiceStateUpdateEvent)
-async def lobby_member_leave(event):
-    pass
+async def lobby_member_leave(event: hikari.VoiceStateUpdateEvent) -> None:
+    if not channels.left_a_channel(event.old_state):
+        return
 
+    collection = plugin.bot.d.mongo_database.channels
+    channel = await plugin.bot.rest.fetch_channel(event.old_state.channel_id)
+    lobby = await channels.CloneChannel.get(collection, channel)
 
-@plugin.listener(hikari.VoiceStateUpdateEvent)
-async def lobby_owner_leave(event):
-    pass
+    if lobby is None:
+        return
+
+    if lobby.is_empty(plugin.bot.cache):
+        await channels.CloneChannel.delete(collection, channel)
 
 
 @plugin.command
@@ -46,7 +80,16 @@ async def lobby(context: lightbulb.SlashContext | lightbulb.PrefixContext):
 @lightbulb.command("create", "Creates a template channel to spawn lobbies")
 @lightbulb.implements(lightbulb.SlashSubCommand, lightbulb.PrefixSubCommand)
 async def create(context: lightbulb.SlashContext | lightbulb.PrefixContext):
-    pass
+    collection = plugin.bot.d.mongo_databse.channels
+
+    await channels.TemplateChannel.create(
+        collection,
+        context.get_guild(),
+        "New Lobby - Edit Me!",
+    )
+    await responses.info(
+        context, "Channel Created", "You lobby has been created. Feel free to edit it!"
+    )
 
 
 @lobby.child

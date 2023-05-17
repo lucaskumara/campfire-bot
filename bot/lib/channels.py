@@ -2,161 +2,184 @@ from __future__ import annotations
 
 import hikari
 
+import hikari.impl.cache as cache
 import motor.motor_asyncio as motor
 
 
 class TemplateChannel:
-    def __init__(self, channel: hikari.GuildVoiceChannel) -> None:
+    def __init__(
+        self,
+        collection: motor.AsyncIOMotorCollection,
+        channel: hikari.GuildVoiceChannel,
+    ) -> None:
+        self.collection = collection
         self.channel = channel
 
     @staticmethod
     async def create(
-        collection: motor.AsyncIOMotorCollection, guild: hikari.Guild
+        collection: motor.AsyncIOMotorCollection, guild: hikari.Guild, name: str
     ) -> TemplateChannel:
-        # Create the channel
-        channel = guild.create_voice_channel("Name")
+        template = await guild.create_voice_channel(name)
 
-        # Store the channel in the db
-        await insert_template_channel(collection, guild.id, channel.id)
+        await add_template(collection, guild.id, template.id)
 
-        # Return the channel
-        return TemplateChannel(channel)
+        return TemplateChannel(collection, template)
 
     @staticmethod
     async def get(
-        collection: motor.AsyncIOMotorCollection,
-        guild: hikari.Guild,
-        channel_id: hikari.Snowflake,
+        collection: motor.AsyncIOMotorCollection, channel: hikari.GuildVoiceChannel
     ) -> TemplateChannel | None:
-        # Check if the channel is in the db, return None if not
-        if not await has_channel(collection, channel_id):
+        if not await template_exists(collection, channel.id):
             return None
 
-        # Get the channel guild.get_channel()
-        channel = guild.get_channel(channel_id)
-
-        # Return the channel
-        return TemplateChannel(channel)
+        return TemplateChannel(collection, channel)
 
     @staticmethod
     async def delete(
-        collection: motor.AsyncIOMotorChangeStream, channel_id: hikari.Snowflake
+        collection: motor.AsyncIOMotorCollection, channel: hikari.GuildVoiceChannel
     ) -> None:
-        # Delete the channel from the db
-        await delete_channel(collection, channel_id)
+        await channel.delete()
+        await delete_template(collection, channel.id)
 
-    async def spawn_lobby(self, member: hikari.Member) -> None:
-        await LobbyChannel.create(self.channel, member)
+    async def spawn_clone(self, owner: hikari.Member, name: str) -> CloneChannel:
+        return await CloneChannel.create(self.collection, self.channel, owner, name)
 
 
-class LobbyChannel:
-    def __init__(self, channel: hikari.GuildVoiceChannel, owner: hikari.Member) -> None:
+class CloneChannel:
+    def __init__(
+        self,
+        collection: motor.AsyncIOMotorCollection,
+        channel: hikari.GuildVoiceChannel,
+    ) -> None:
+        self.collection = collection
         self.channel = channel
-        self.owner = owner
 
     @staticmethod
     async def create(
         collection: motor.AsyncIOMotorCollection,
-        template_channel: hikari.GuildVoiceChannel,
+        template: hikari.GuildVoiceChannel,
         owner: hikari.Member,
-    ) -> LobbyChannel:
-        # Clone the template channel
-        channel = template_channel.get_guild().create_voice_channel(
-            "Lobby",
-            position=template_channel.position,
-            user_limit=template_channel.user_limit,
-            bitrate=template_channel.bitrate,
-            video_quality_mode=template_channel.video_quality_mode,
-            permission_overwrites=template_channel.permission_overwrites,
-            region=template_channel.region,
-            category=template_channel.parent_id,
+        name: str,
+    ) -> CloneChannel:
+        clone = await template.get_guild().create_voice_channel(
+            name,
+            position=template.position,
+            user_limit=template.user_limit,
+            bitrate=template.bitrate,
+            video_quality_mode=template.video_quality_mode,
+            permission_overwrites=template.permission_overwrites,
+            region=template.region,
+            category=template.parent_id,
         )
 
-        # Store the channel in the db
-        await insert_lobby_channel(
-            collection,
-            template_channel.guild_id,
-            template_channel.id,
-            channel.id,
-            owner.id,
+        await add_clone(
+            collection, template.get_guild().id, template.id, clone.id, owner.id
         )
 
-        # Return the channel
-        return LobbyChannel(channel)
+        return CloneChannel(collection, clone)
 
     @staticmethod
     async def get(
-        collection: motor.AsyncIOMotorCollection,
-        guild: hikari.Guild,
-        channel_id: hikari.Snowflake,
-    ) -> LobbyChannel | None:
-        # Check if the channel is in the db, return None if not
-        if not await has_channel(collection, channel_id):
+        collection: motor.AsyncIOMotorCollection, channel: hikari.GuildVoiceChannel
+    ) -> CloneChannel | None:
+        if not await clone_exists(collection, channel.id):
             return None
 
-        # Get the channel guild.get_channel()
-        channel = guild.get_channel(channel)
-
-        # Return the channel
-        return LobbyChannel(channel)
+        return CloneChannel(collection, channel)
 
     @staticmethod
     async def delete(
-        collection: motor.AsyncIOMotorCollection, channel_id: hikari.Snowflake
+        collection: motor.AsyncIOMotorCollection, channel: hikari.GuildVoiceChannel
     ) -> None:
-        # Delete the channel from the db
-        await delete_channel(collection, channel_id)
+        await channel.delete()
+        await delete_clone(collection, channel.id)
 
-    async def rename(self, new_name: str) -> None:
-        self.channel.edit(name=new_name)
+    def is_empty(self, cache: cache.CacheImpl) -> bool:
+        voice_states = cache.get_voice_states_view_for_channel(
+            self.channel.get_guild(), self.channel.id
+        )
 
-    async def kick(self, member: hikari.Member) -> None:
-        await member.edit(voice_channel=None)
+        return list(voice_states) == []
 
-    async def set_owner(
-        self, collection: motor.AsyncIOMotorCollection, new_owner: hikari.Member
-    ) -> None:
-        # Set the channel owner to the member
-        await collection.update_one(
+    async def get_owner(self) -> hikari.Member:
+        document = await self.collection.find_one(
+            {"channel_id": str(self.channel.id), "type": "lobby"}
+        )
+
+        return self.channel.get_guild().get_member(document["owner_id"])
+
+    async def set_owner(self, new_owner: hikari.Member) -> None:
+        await self.collection.update_one(
             {"channel_id": str(self.channel.id)},
             {"$set": {"owner_id": str(new_owner.id)}},
         )
 
+    async def rename(self, new_name: str) -> None:
+        await self.channel.edit(name=new_name)
 
-async def insert_template_channel(
-    collection: motor.AsyncIOMotorCollection,
-    guild_id: hikari.Snowflake,
-    channel_id: hikari.Snowflake,
-) -> None:
-    await collection.insert_one(
-        {"guild_id": str(guild_id), "channel_id": str(channel_id)}
-    )
+    async def kick(self, member: hikari.Member) -> None:
+        await member.edit(voice_channel=None)
 
 
-async def insert_lobby_channel(
-    collection: motor.AsyncIOMotorCollection,
-    guild_id: hikari.Snowflake,
-    template_channel_id: hikari.Snowflake,
-    channel_id: hikari.Snowflake,
-    owner_id: hikari.Snowflake,
-) -> None:
+def joined_a_channel(new_state: hikari.VoiceState) -> bool:
+    return new_state.channel_id is not None
+
+
+def left_a_channel(old_state: hikari.VoiceState) -> bool:
+    return old_state is not None and old_state.channel_id is not None
+
+
+async def add_template(collection, guild_id, channel_id):
     await collection.insert_one(
         {
             "guild_id": str(guild_id),
-            "template_id": str(template_channel_id),
             "channel_id": str(channel_id),
-            "owner_id": str(owner_id),
+            "type": "template",
         }
     )
 
 
-async def has_channel(
-    collection: motor.AsyncIOMotorCollection, channel_id: hikari.Snowflake
-) -> bool:
-    return await collection.find_one({"channel_id": str(channel_id)}) is not None
+async def add_clone(collection, guild_id, template_id, clone_id, owner_id):
+    await collection.insert_one(
+        {
+            "guild_id": str(guild_id),
+            "template_id": str(template_id),
+            "channel_id": str(clone_id),
+            "owner_id": str(owner_id),
+            "type": "clone",
+        }
+    )
 
 
-async def delete_channel(
-    collection: motor.AsyncIOMotorCollection, channel_id: hikari.Snowflake
-) -> None:
-    await collection.delete_one({"channel_id": str(channel_id)})
+async def delete_template(collection, channel_id):
+    await collection.delete_one({"channel_id": str(channel_id), "type": "template"})
+
+
+async def delete_clone(collection, channel_id):
+    await collection.delete_one({"channel_id": str(channel_id), "type": "clone"})
+
+
+async def delete_guild_data(collection, guild_id):
+    await collection.delete_many({"guild_id": str(guild_id)})
+
+
+async def template_exists(collection, channel_id):
+    document = await collection.find_one(
+        {"channel_id": str(channel_id), "type": "template"}
+    )
+
+    return document is not None
+
+
+async def clone_exists(collection, channel_id):
+    document = await collection.find_one(
+        {"channel_id": str(channel_id), "type": "clone"}
+    )
+
+    return document is not None
+
+
+async def get_all_documents(collection):
+    cursor = collection.find()
+
+    return await cursor.to_list(None)
