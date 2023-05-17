@@ -7,6 +7,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 if __name__ == "__main__":
+    if os.name != "nt":
+        import uvloop
+
+        uvloop.install()
+
     bot = lightbulb.BotApp(
         token=os.getenv("TOKEN"),
         prefix=lightbulb.when_mentioned_or(["campfire ", "camp "]),
