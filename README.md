@@ -17,8 +17,8 @@ You may wish to create a virtual environment prior to installing dependencies. D
 The .env file needs to contain the following variables.
 
 ```
-TOKEN=...           # Discord Application Token
-DATABASE_URI=...    # MongoDB Connection String
+TOKEN=...               # Discord Application Token
+DATABASE_URI=...        # MongoDB Connection String
 OPENAI_API_KEY=...      # OpenAI Secret Key
 ```
 
@@ -30,7 +30,7 @@ OpenAI secret keys can be obtained at https://platform.openai.com/account/api-ke
 To run the bot, simply run the `bot.py` file in the `bot` directory. Please note this should only be done after following the setup instructions listed above.
 
 ```bash
-$ python3 -O bot.py
+$ python3 -OO bot.py
 ```
 
 ## Planned Features
