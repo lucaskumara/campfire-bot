@@ -160,5 +160,6 @@ async def error(
             embed_description,
             context.app.get_me().avatar_url,
             ERROR_MESSAGE_COLOUR,
-        )
+        ),
+        delete_after=ERROR_MESSAGE_DELETE_DELAY,
     )
