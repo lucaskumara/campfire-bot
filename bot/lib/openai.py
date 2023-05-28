@@ -1,5 +1,4 @@
 import openai
-import os
 
 
 def prompt(message: str) -> str:
