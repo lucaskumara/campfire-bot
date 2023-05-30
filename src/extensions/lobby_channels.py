@@ -4,7 +4,7 @@ import lightbulb
 from lib import channels, responses
 
 
-plugin = lightbulb.Plugin("Temporary Channels")
+plugin = lightbulb.Plugin("Lobby Channels")
 
 
 @plugin.listener(hikari.StartedEvent)
@@ -287,7 +287,7 @@ async def owner(context: lightbulb.SlashContext | lightbulb.PrefixContext):
 
 
 def load(bot: lightbulb.BotApp) -> None:
-    """Loads the temporary channels plugin.
+    """Loads the lobby channels plugin.
 
     Arguments:
         bot: The bot instance.
