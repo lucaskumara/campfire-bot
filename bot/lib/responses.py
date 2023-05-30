@@ -11,6 +11,7 @@ from lightbulb.utils.nav import (
 )
 from lightbulb.utils.pag import EmbedPaginator
 
+
 INFO_MESSAGE_COLOUR = hikari.Colour(0xE67E22)
 ERROR_MESSAGE_COLOUR = None
 ERROR_MESSAGE_DELETE_DELAY = 10
