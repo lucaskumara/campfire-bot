@@ -36,7 +36,7 @@ $ python3 -OO bot.py
 ## Planned Features
 
 - [x] Tags
-- [ ] Custom Lobbies (Undergoing heavy reworks)
+- [x] Lobby Channels
 - [x] Profanity Filter
 - [ ] Server Stats
 - [ ] Birthdays
