@@ -1,10 +1,8 @@
 import hikari
 import lightbulb
 
-from lightbulb.utils.permissions import permissions_for
-
-import lib.responses as responses
-import lib.tags as tags
+from lib import responses, tags
+from lightbulb.utils import permissions
 
 
 plugin = lightbulb.Plugin("Tags")
@@ -200,7 +198,8 @@ async def delete(context: lightbulb.SlashContext | lightbulb.PrefixContext) -> N
 
     if (
         tag_deleter.id != tag.get_author_id()
-        and not permissions_for(tag_deleter) & hikari.Permissions.MANAGE_MESSAGES
+        and not permissions.permissions_for(tag_deleter)
+        & hikari.Permissions.MANAGE_MESSAGES
     ):
         await responses.error(context, "You don't have permission to delete that tag.")
         return

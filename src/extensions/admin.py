@@ -2,10 +2,9 @@ import hikari
 import lightbulb
 import os
 
-import lib.exceptions as exceptions
-import lib.responses as responses
-
+from lib import exceptions, responses
 from motor.motor_asyncio import AsyncIOMotorClient
+
 
 plugin = lightbulb.Plugin("Admin")
 

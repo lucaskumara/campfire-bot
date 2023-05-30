@@ -1,8 +1,8 @@
 import hikari
 import lightbulb
 
-import lib.channels as channels
-import lib.responses as responses
+from lib import channels, responses
+
 
 plugin = lightbulb.Plugin("Temporary Channels")
 
