@@ -27,7 +27,7 @@ OpenAI secret keys can be obtained at https://platform.openai.com/account/api-ke
 
 ## Running the bot
 
-To run the bot, simply run the `bot.py` file in the `bot` directory. Please note this should only be done after following the setup instructions listed above.
+To run the bot, simply run the `bot.py` file in the `src` directory. Please note this should only be done after following the setup instructions listed above.
 
 ```bash
 $ python3 -OO bot.py
@@ -36,7 +36,7 @@ $ python3 -OO bot.py
 ## Planned Features
 
 - [x] Tags
-- [ ] Custom Lobbies (Undergoing heavy reworks)
+- [x] Lobby Channels
 - [x] Profanity Filter
 - [ ] Server Stats
 - [ ] Birthdays
