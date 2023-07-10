@@ -14,8 +14,8 @@ class TemplateChannel:
         channel: The voice channel to be represented as a template channel.
 
     Attributes:
-        _collection: The mongo collection to store channel data in.
-        _channel: The voice channel to be represented as a template channel.
+        collection: The mongo collection to store channel data in.
+        channel: The voice channel to be represented as a template channel.
     """
 
     def __init__(
@@ -23,12 +23,8 @@ class TemplateChannel:
         collection: motor.AsyncIOMotorCollection,
         channel: hikari.GuildVoiceChannel,
     ) -> None:
-        self._collection = collection
-        self._channel = channel
-
-    def get_channel(self) -> hikari.GuildVoiceChannel:
-        """Gets the voice channel object."""
-        return self._channel
+        self.collection = collection
+        self.channel = channel
 
     async def spawn_clone(self, owner: hikari.Member, name: str) -> CloneChannel:
         """Creates a clone channel associated with the template channel.
@@ -40,7 +36,7 @@ class TemplateChannel:
         Returns:
             The created clone channel.
         """
-        return await create_clone(self._collection, self._channel, owner, name)
+        return await create_clone(self.collection, self.channel, owner, name)
 
 
 class CloneChannel:
@@ -51,8 +47,8 @@ class CloneChannel:
         channel: The voice channel to be represented as a template channel.
 
     Attributes:
-        _collection: The mongo collection to store channel data in.
-        _channel: The voice channel to be represented as a template channel.
+        collection: The mongo collection to store channel data in.
+        channel: The voice channel to be represented as a template channel.
     """
 
     def __init__(
@@ -60,39 +56,35 @@ class CloneChannel:
         collection: motor.AsyncIOMotorCollection,
         channel: hikari.GuildVoiceChannel,
     ) -> None:
-        self._collection = collection
-        self._channel = channel
+        self.collection = collection
+        self.channel = channel
 
     def is_empty(self, cache: cache.CacheImpl) -> bool:
         """Returns if the channel is empty or not."""
         voice_states = cache.get_voice_states_view_for_channel(
-            self._channel.get_guild(), self._channel.id
+            self.channel.get_guild(), self.channel.id
         )
 
         return list(voice_states) == []
 
-    def get_channel(self) -> hikari.GuildVoiceChannel:
-        """Gets the voice channel object."""
-        return self._channel
-
     async def get_owner(self) -> hikari.Member:
         """Gets the member object of the lobby owner."""
-        document = await self._collection.find_one(
-            {"channel_id": str(self._channel.id), "type": "clone"}
+        document = await self.collection.find_one(
+            {"channel_id": str(self.channel.id), "type": "clone"}
         )
 
-        return self._channel.get_guild().get_member(document["owner_id"])
+        return self.channel.get_guild().get_member(document["owner_id"])
 
     async def set_owner(self, new_owner: hikari.Member) -> None:
         """Sets the lobby owner to the specified member."""
-        await self._collection.update_one(
-            {"channel_id": str(self._channel.id)},
+        await self.collection.update_one(
+            {"channel_id": str(self.channel.id)},
             {"$set": {"owner_id": str(new_owner.id)}},
         )
 
     async def rename(self, new_name: str) -> None:
         """Renames the voice channel."""
-        await self._channel.edit(name=new_name)
+        await self.channel.edit(name=new_name)
 
     async def kick(self, member: hikari.Member) -> None:
         """Kicks the specified member from the voice channel."""

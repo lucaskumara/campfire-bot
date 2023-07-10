@@ -12,51 +12,23 @@ class Tag:
         document: The queried document to represent as a tag.
 
     Attributes:
-        _name: The name of the tag.
-        _content: The content of the tag.
-        _guild_id: The guild ID of the tag.
-        _author_id: The author ID of the tag.
-        _created_date: The date the tag was created.
-        _modified_date: The date the tag was last modified.
-        _uses: The number of times the tag was used.
+        name: The name of the tag.
+        content: The content of the tag.
+        guild_id: The guild ID of the tag.
+        author_id: The author ID of the tag.
+        created_date: The date the tag was created.
+        modified_date: The date the tag was last modified.
+        uses: The number of times the tag was used.
     """
 
-    def __init__(self, document: dict[str, str | int | datetime]) -> None:
-        self._name = document["name"]
-        self._content = document["content"]
-        self._guild_id = int(document["guild_id"])
-        self._author_id = int(document["author_id"])
-        self._created_date = document["created_at"]
-        self._modified_date = document["modified_at"]
-        self._uses = document["uses"]
-
-    def get_name(self) -> str:
-        """Retrieves the tag name."""
-        return self._name
-
-    def get_content(self) -> str:
-        """Retrieves the tag content."""
-        return self._content
-
-    def get_guild(self) -> hikari.Guild:
-        """Retrieves the tag guild ID."""
-        return self._guild_id
-
-    def get_author_id(self) -> int:
-        """Retrieves the tag author ID."""
-        return self._author_id
-
-    def get_created_date(self) -> datetime:
-        """Retrieves the date the tag was created."""
-        return self._created_date
-
-    def get_modified_date(self) -> datetime:
-        """Retrieves the date the tag was last modified."""
-        return self._modified_date
-
-    def get_uses(self) -> int:
-        """Retrieves the number of times the tag was used."""
-        return self._uses
+    def __init__(self, document: dict) -> None:
+        self.name = document["name"]
+        self.content = document["content"]
+        self.guild_id = hikari.Snowflake(document["guild_id"])
+        self.author_id = hikari.Snowflake(document["author_id"])
+        self.created_date = document["created_at"]
+        self.modified_date = document["modified_at"]
+        self.uses = document["uses"]
 
 
 async def get_tag(
