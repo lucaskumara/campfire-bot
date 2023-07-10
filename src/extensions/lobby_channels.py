@@ -81,7 +81,7 @@ async def create_template_channel(event: hikari.VoiceStateUpdateEvent) -> None:
 
     clone = await template.spawn_clone(event.state.member, "Lobby")
 
-    await event.state.member.edit(voice_channel=clone.get_channel())
+    await event.state.member.edit(voice_channel=clone.channel)
 
 
 @plugin.listener(hikari.VoiceStateUpdateEvent)

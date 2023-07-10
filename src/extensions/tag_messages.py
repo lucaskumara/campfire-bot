@@ -83,7 +83,7 @@ async def show(context: lightbulb.SlashContext | lightbulb.PrefixContext) -> Non
         return
 
     await tags.increment_tag(collection, tag_name, tag_guild.id)
-    await context.respond(tag.get_content())
+    await context.respond(tag.content)
 
 
 @tag.child
@@ -160,7 +160,7 @@ async def edit(context: lightbulb.SlashContext | lightbulb.PrefixContext) -> Non
         await responses.error(context, "That tag does not exist.")
         return
 
-    if tag_editor.id != tag.get_author_id():
+    if tag_editor.id != tag.author_id:
         await responses.error(context, "You don't have permission to edit that tag.")
         return
 
@@ -197,7 +197,7 @@ async def delete(context: lightbulb.SlashContext | lightbulb.PrefixContext) -> N
         return
 
     if (
-        tag_deleter.id != tag.get_author_id()
+        tag_deleter.id != tag.author_id
         and not permissions.permissions_for(tag_deleter)
         & hikari.Permissions.MANAGE_MESSAGES
     ):
@@ -241,11 +241,11 @@ async def info(context: lightbulb.SlashContext | lightbulb.PrefixContext) -> Non
         plugin.bot.get_me().avatar_url,
         responses.INFO_MESSAGE_COLOUR,
         [
-            responses.Field("Name", tag.get_name(), True),
-            responses.Field("Author", f"<@{tag.get_author_id()}>", True),
-            responses.Field("Uses", tag.get_uses(), True),
-            responses.Field("Created at", tag.get_created_date(), True),
-            responses.Field("Modified at", tag.get_modified_date(), True),
+            responses.Field("Name", tag.name, True),
+            responses.Field("Author", f"<@{tag.author_id}>", True),
+            responses.Field("Uses", tag.uses, True),
+            responses.Field("Created at", tag.created_date, True),
+            responses.Field("Modified at", tag.modified_date, True),
         ],
     )
 
@@ -288,7 +288,7 @@ async def list(context: lightbulb.SlashContext | lightbulb.PrefixContext) -> Non
         context,
         "Tag list",
         f"There are {tag_list_size} tags. Use `/tag show [tag]` to view its contents.",
-        [f"• {tag.get_name()}" for tag in tag_list],
+        [f"• {tag.name}" for tag in tag_list],
     )
 
 
