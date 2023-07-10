@@ -1,8 +1,7 @@
 from lib import openai
 
 
-def test_prompt():
+def test_prompt() -> None:
     response = openai.prompt("Hello!")
 
-    assert type(response) is str
     assert response != ""

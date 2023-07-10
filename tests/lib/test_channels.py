@@ -1,515 +1,522 @@
 import hikari
-import os
 import pytest
-
-import motor.motor_asyncio as motor
 
 from lib import channels
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
-MONGO_TEST_CLIENT = motor.AsyncIOMotorClient(os.getenv("DATABASE_URI"))
-MONGO_TEST_DATABASE = MONGO_TEST_CLIENT["campfire-test"]
-
-
 @pytest.fixture
-def mongo_client():
-    """The mongo client."""
-    return motor.AsyncIOMotorClient(os.getenv("DATABASE_URI"))
-
-
-@pytest.fixture
-def mongo_database(mongo_client):
-    """The mongo database."""
-    return mongo_client["campfire-test"]
-
-
-@pytest.fixture
-def mongo_collection(mongo_database):
-    """The mongo collection."""
-    return mongo_database["channels"]
-
-
-@pytest.fixture
-def test_id():
-    """A sample ID to reuse."""
+def mock_id() -> hikari.Snowflake:
     return hikari.Snowflake(123)
 
 
-@patch("lib.channels.register_template", return_value=None)
-@pytest.mark.asyncio
-async def test_create_template(
-    mock_register_template: AsyncMock, test_id: hikari.Snowflake
-) -> None:
-    """Test the create_template function.
-
-    Arguments:
-        mock_register_template: The mocked register_template function.
-        test_id: The test_id fixture.
-
-    Returns:
-        None.
-    """
+def test_template_channel() -> None:
+    mock_collection = MagicMock()
     mock_channel = MagicMock()
-    mock_channel.id = test_id
 
-    mock_guild = AsyncMock()
-    mock_guild.create_voice_channel.return_value = mock_channel
+    result = channels.TemplateChannel(mock_collection, mock_channel)
 
-    result = await channels.create_template(mongo_collection, mock_guild, "Name")
-
-    assert type(result) == channels.TemplateChannel
-    assert result.get_channel().id == test_id
+    assert result.collection == mock_collection
+    assert result.channel == mock_channel
 
 
-@patch("lib.channels.register_clone", return_value=None)
+@patch("lib.channels.create_clone", return_value=channels.CloneChannel(None, None))
 @pytest.mark.asyncio
-async def test_create_clone(
-    mock_register_clone: AsyncMock, test_id: hikari.Snowflake
-) -> None:
-    """Test the create_clone function.
+async def test_template_channel_spawn_clone(mock_create_clone: AsyncMock) -> None:
+    mock_collection = MagicMock()
+    mock_channel = MagicMock()
+    mock_owner = MagicMock()
+    mock_channel_name = MagicMock()
 
-    Arguments:
-        mock_register_clone: The mocked register_clone function.
-        test_id: The test_id fixture.
+    template_channel = channels.TemplateChannel(mock_collection, mock_channel)
 
-    Returns:
-        None.
-    """
-    mock_clone = MagicMock()
-    mock_clone.id = test_id
+    result = await template_channel.spawn_clone(mock_owner, mock_channel_name)
 
-    mock_guild = AsyncMock()
-    mock_guild.create_voice_channel.return_value = mock_clone
+    assert isinstance(result, channels.CloneChannel)
 
-    mock_template = MagicMock()
-    mock_template.get_guild.return_value = mock_guild
-
-    result = await channels.create_clone(
-        MagicMock(), mock_template, MagicMock(), "Name"
+    mock_create_clone.assert_awaited_once_with(
+        mock_collection, mock_channel, mock_owner, mock_channel_name
     )
 
-    assert type(result) == channels.CloneChannel
-    assert result.get_channel().id == test_id
+
+def test_clone_channel() -> None:
+    mock_collection = MagicMock()
+    mock_channel = MagicMock()
+
+    result = channels.CloneChannel(mock_collection, mock_channel)
+
+    assert result.collection == mock_collection
+    assert result.channel == mock_channel
+
+
+@patch("lib.channels.cache", return_value=MagicMock())
+def test_clone_channel_is_empty_with_empty_result(mock_cache: MagicMock) -> None:
+    mock_cache.get_voice_states_view_for_channel = MagicMock()
+    mock_cache.get_voice_states_view_for_channel.return_value = []
+
+    clone_channel = channels.CloneChannel(MagicMock(), MagicMock())
+
+    result = clone_channel.is_empty(mock_cache)
+
+    assert result
+
+
+@patch("lib.channels.cache", return_value=MagicMock())
+def test_clone_channel_is_empty_with_non_empty_result(mock_cache: MagicMock) -> None:
+    mock_cache.get_voice_states_view_for_channel = MagicMock()
+    mock_cache.get_voice_states_view_for_channel.return_value = [MagicMock()]
+
+    clone_channel = channels.CloneChannel(MagicMock(), MagicMock())
+
+    result = clone_channel.is_empty(mock_cache)
+
+    assert not result
+
+
+@pytest.mark.asyncio
+async def test_clone_channel_get_owner(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.find_one = AsyncMock()
+    mock_collection.find_one.return_value = {"owner_id": mock_id}
+
+    mock_channel = MagicMock()
+    mock_channel.get_guild = MagicMock()
+    mock_channel.get_guild.return_value = MagicMock()
+    mock_channel.get_guild.return_value.get_member = MagicMock()
+
+    clone_channel = channels.CloneChannel(mock_collection, mock_channel)
+
+    await clone_channel.get_owner()
+
+    mock_channel.get_guild.return_value.get_member.assert_called_once_with(mock_id)
+
+
+@pytest.mark.asyncio
+async def test_clone_channel_set_owner(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.update_one = AsyncMock()
+
+    mock_channel = MagicMock()
+    mock_channel.id = mock_id
+
+    mock_member = MagicMock()
+    mock_member.id = mock_id
+
+    clone_channel = channels.CloneChannel(mock_collection, mock_channel)
+
+    await clone_channel.set_owner(mock_member)
+
+    mock_collection.update_one.assert_awaited_once_with(
+        {"channel_id": str(mock_id)}, {"$set": {"owner_id": str(mock_id)}}
+    )
+
+
+@pytest.mark.asyncio
+async def test_clone_channel_rename() -> None:
+    mock_channel = MagicMock()
+    mock_channel.edit = AsyncMock()
+
+    new_channel_name = "Sample Name"
+
+    clone_channel = channels.CloneChannel(MagicMock(), mock_channel)
+
+    await clone_channel.rename(new_channel_name)
+
+    mock_channel.edit.assert_awaited_once_with(name=new_channel_name)
+
+
+@pytest.mark.asyncio
+async def test_clone_channel_kick() -> None:
+    mock_member = MagicMock()
+    mock_member.edit = AsyncMock()
+
+    clone_channel = channels.CloneChannel(MagicMock(), MagicMock())
+
+    await clone_channel.kick(mock_member)
+
+    mock_member.edit.assert_awaited_once_with(voice_channel=None)
+
+
+@patch("lib.channels.register_template", return_value=AsyncMock())
+@pytest.mark.asyncio
+async def test_create_template(
+    mock_register_template: AsyncMock, mock_id: hikari.Snowflake
+) -> None:
+    mock_collection = MagicMock()
+
+    mock_guild = MagicMock()
+    mock_guild.id = mock_id
+    mock_guild.create_voice_channel = AsyncMock()
+    mock_guild.create_voice_channel.return_value = MagicMock()
+    mock_guild.create_voice_channel.return_value.id = mock_id
+
+    result = await channels.create_template(mock_collection, mock_guild, "Sample Name")
+
+    assert isinstance(result, channels.TemplateChannel)
+    assert result.channel.id == mock_id
+
+    mock_register_template.assert_awaited_once_with(
+        mock_collection, mock_guild.id, mock_id
+    )
+
+
+@patch("lib.channels.register_clone", return_value=AsyncMock())
+@pytest.mark.asyncio
+async def test_create_clone(
+    mock_register_clone: AsyncMock, mock_id: hikari.Snowflake
+) -> None:
+    mock_collection = MagicMock()
+
+    mock_template_channel = MagicMock()
+    mock_template_channel.id = mock_id
+    mock_template_channel.get_guild = MagicMock()
+    mock_template_channel.get_guild.return_value = MagicMock()
+    mock_template_channel.get_guild.return_value.id = mock_id
+    mock_template_channel.get_guild.return_value.create_voice_channel = AsyncMock()
+    mock_template_channel.get_guild.return_value.create_voice_channel.return_value = (
+        MagicMock()
+    )
+    mock_template_channel.get_guild.return_value.create_voice_channel.return_value.id = (
+        mock_id
+    )
+
+    mock_owner = MagicMock()
+    mock_owner.id = mock_id
+
+    result = await channels.create_clone(
+        mock_collection, mock_template_channel, mock_owner, "Sample Name"
+    )
+
+    assert isinstance(result, channels.CloneChannel)
+    assert result.channel.id == mock_id
+
+    mock_register_clone.assert_awaited_once_with(
+        mock_collection, mock_id, mock_id, mock_id, mock_id
+    )
 
 
 @patch("lib.channels.template_exists", return_value=True)
 @pytest.mark.asyncio
-async def test_get_template_template_exists(
-    mock_template_exists: AsyncMock, test_id: hikari.Snowflake
+async def test_get_template_with_existing_template(
+    mock_template_exists: MagicMock, mock_id: hikari.Snowflake
 ) -> None:
-    """Test the template_exists function.
+    mock_collection = MagicMock()
 
-    template_exists function is patched to return True.
-
-    Arguments:
-        mock_template_exists: The mocked template_exists function.
-        test_id: The test_id fixture.
-
-    Returns:
-        None.
-    """
     mock_channel = MagicMock()
-    mock_channel.id = test_id
+    mock_channel.id = mock_id
 
-    result = await channels.get_template(MagicMock(), mock_channel)
+    result = await channels.get_template(mock_collection, mock_channel)
 
-    assert type(result) == channels.TemplateChannel
-    assert result.get_channel().id == test_id
+    assert isinstance(result, channels.TemplateChannel)
+    assert result.channel.id == mock_id
 
 
 @patch("lib.channels.template_exists", return_value=False)
 @pytest.mark.asyncio
-async def test_get_template_template_doesnt_exist(
-    mock_template_exists: AsyncMock,
+async def test_get_template_with_non_existing_template(
+    mock_template_exists: MagicMock,
 ) -> None:
-    """Test the template_exists function.
+    mock_collection = MagicMock()
+    mock_channel = MagicMock()
 
-    template_exists function is patched to return False.
-
-    Arguments:
-        mock_template_exists: The mocked template_exists function.
-
-    Returns:
-        None.
-    """
-    result = await channels.get_template(MagicMock(), MagicMock())
+    result = await channels.get_template(mock_collection, mock_channel)
 
     assert result is None
 
 
 @patch("lib.channels.clone_exists", return_value=True)
 @pytest.mark.asyncio
-async def test_get_clone_clone_exists(
-    mock_clone_exists: AsyncMock, test_id: hikari.Snowflake
+async def test_get_clone_with_existing_template(
+    mock_clone_exists: MagicMock, mock_id: hikari.Snowflake
 ) -> None:
-    """Test the clone_exists function.
+    mock_collection = MagicMock()
 
-    clone_exists function is patched to return True.
-
-    Arguments:
-        mock_clone_exists: The mocked clone_exists function.
-        test_id: The test_id fixture.
-
-    Returns:
-        None.
-    """
     mock_channel = MagicMock()
-    mock_channel.id = test_id
+    mock_channel.id = mock_id
 
-    result = await channels.get_clone(MagicMock(), mock_channel)
+    result = await channels.get_clone(mock_collection, mock_channel)
 
-    assert type(result) == channels.CloneChannel
-    assert result.get_channel().id == test_id
+    assert isinstance(result, channels.CloneChannel)
+    assert result.channel.id == mock_id
 
 
 @patch("lib.channels.clone_exists", return_value=False)
 @pytest.mark.asyncio
-async def test_get_clone_clone_doesnt_exist(mock_clone_exists: AsyncMock) -> None:
-    """Test the clone_exists function.
+async def test_get_clone_with_non_existing_template(
+    mock_clone_exists: MagicMock,
+) -> None:
+    mock_collection = MagicMock()
+    mock_channel = MagicMock()
 
-    clone_exists function is patched to return False.
-
-    Arguments:
-        mock_clone_exists: The mocked clone_exists function.
-
-    Returns:
-        None.
-    """
-    result = await channels.get_clone(MagicMock(), MagicMock())
+    result = await channels.get_clone(mock_collection, mock_channel)
 
     assert result is None
 
 
-@patch("lib.channels.deregister_template", return_value=None)
+@patch("lib.channels.deregister_template", return_value=MagicMock())
 @pytest.mark.asyncio
-async def test_delete_template(mock_deregister_template: AsyncMock) -> None:
-    """Test the delete_template function.
-
-    Arguments:
-        mock_deregister_template: The mocked deregister_template function.
-
-    Returns:
-        None.
-    """
-    mock_channel = MagicMock()
-    mock_channel.delete = AsyncMock()
-
-    await channels.delete_template(MagicMock(), mock_channel)
-
-    mock_channel.delete.assert_called_once()
-    mock_deregister_template.assert_called_once()
-
-
-@patch("lib.channels.deregister_clone", return_value=None)
-@pytest.mark.asyncio
-async def test_delete_clone(mock_deregister_clone: AsyncMock) -> None:
-    """Test the delete_clone function.
-
-    Arguments:
-        mock_deregister_clone: The mocked deregister_clone function.
-
-    Returns:
-        None.
-    """
-    mock_channel = MagicMock()
-    mock_channel.delete = AsyncMock()
-
-    await channels.delete_clone(MagicMock(), mock_channel)
-
-    mock_channel.delete.assert_called_once()
-    mock_deregister_clone.assert_called_once()
-
-
-def test_joined_a_channel(test_id: hikari.Snowflake) -> None:
-    """Test the joined_a_channel function.
-
-    Arguments:
-        test_id: The test_id fixture.
-
-    Returns:
-        None.
-    """
-    voice_state1 = MagicMock()
-    voice_state1.channel_id = test_id
-
-    voice_state2 = MagicMock()
-    voice_state2.channel_id = None
-
-    assert channels.joined_a_channel(voice_state1) == True
-    assert channels.joined_a_channel(voice_state2) == False
-
-
-def test_left_a_channel(test_id: hikari.Snowflake) -> None:
-    """Test the left_a_channel function.
-
-    Arguments:
-        test_id: The test_id fixture.
-
-    Returns:
-        None.
-    """
-    voice_state1 = MagicMock()
-    voice_state1.channel_id = test_id
-
-    voice_state2 = MagicMock()
-    voice_state2.channel_id = None
-
-    voice_state3 = None
-
-    assert channels.left_a_channel(voice_state1) == True
-    assert channels.left_a_channel(voice_state2) == False
-    assert channels.left_a_channel(voice_state3) == False
-
-
-@pytest.mark.asyncio
-async def test_register_template(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
+async def test_delete_template(
+    mock_deregister_template: MagicMock, mock_id: hikari.Snowflake
 ) -> None:
-    """Test the register_template function.
+    mock_collection = MagicMock()
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    mock_channel = MagicMock()
+    mock_channel.id = mock_id
+    mock_channel.delete = AsyncMock()
 
-    Returns:
-        None.
-    """
-    await channels.register_template(mongo_collection, test_id, test_id)
+    await channels.delete_template(mock_collection, mock_channel)
 
-    document = await mongo_collection.find_one(
-        {"guild_id": str(test_id), "channel_id": str(test_id), "type": "template"}
+    mock_channel.delete.assert_awaited_once_with()
+    mock_deregister_template.assert_called_once_with(mock_collection, mock_id)
+
+
+@patch("lib.channels.deregister_clone", return_value=MagicMock())
+@pytest.mark.asyncio
+async def test_delete_clone(
+    mock_deregister_clone: MagicMock, mock_id: hikari.Snowflake
+) -> None:
+    mock_collection = MagicMock()
+
+    mock_channel = MagicMock()
+    mock_channel.id = mock_id
+    mock_channel.delete = AsyncMock()
+
+    await channels.delete_clone(mock_collection, mock_channel)
+
+    mock_channel.delete.assert_awaited_once_with()
+    mock_deregister_clone.assert_called_once_with(mock_collection, mock_id)
+
+
+def test_joined_a_channel_with_channel_id(mock_id: hikari.Snowflake) -> None:
+    mock_state = MagicMock()
+    mock_state.channel_id = mock_id
+
+    result = channels.joined_a_channel(mock_state)
+
+    assert result
+
+
+def test_joined_a_channel_with_no_channel_id() -> None:
+    mock_state = MagicMock()
+    mock_state.channel_id = None
+
+    result = channels.joined_a_channel(mock_state)
+
+    assert not result
+
+
+def test_left_a_channel_with_no_state() -> None:
+    result = channels.left_a_channel(None)
+
+    assert not result
+
+
+def test_left_a_channel_with_channel_id(mock_id: hikari.Snowflake) -> None:
+    mock_state = MagicMock()
+    mock_state.channel_id = mock_id
+
+    result = channels.left_a_channel(mock_state)
+
+    assert result
+
+
+def test_left_a_channel_with_no_channel_id() -> None:
+    mock_state = MagicMock()
+    mock_state.channel_id = None
+
+    result = channels.left_a_channel(mock_state)
+
+    assert not result
+
+
+@pytest.mark.asyncio
+async def test_register_template(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.insert_one = AsyncMock()
+
+    await channels.register_template(mock_collection, mock_id, mock_id)
+
+    mock_collection.insert_one.assert_awaited_once_with(
+        {
+            "guild_id": str(mock_id),
+            "channel_id": str(mock_id),
+            "type": "template",
+        }
     )
 
-    assert document is not None
-
-    await mongo_collection.delete_many({})
-
 
 @pytest.mark.asyncio
-async def test_register_clone(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
-) -> None:
-    """Test the register_clone function.
+async def test_register_clone(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.insert_one = AsyncMock()
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    await channels.register_clone(mock_collection, mock_id, mock_id, mock_id, mock_id)
 
-    Returns:
-        None.
-    """
-    await channels.register_clone(mongo_collection, test_id, test_id, test_id, test_id)
-
-    document = await mongo_collection.find_one(
+    mock_collection.insert_one.assert_awaited_once_with(
         {
-            "guild_id": str(test_id),
-            "template_id": str(test_id),
-            "channel_id": str(test_id),
-            "owner_id": str(test_id),
+            "guild_id": str(mock_id),
+            "template_id": str(mock_id),
+            "channel_id": str(mock_id),
+            "owner_id": str(mock_id),
             "type": "clone",
         }
     )
 
-    assert document is not None
 
-    await mongo_collection.delete_many({})
+@pytest.mark.asyncio
+async def test_deregister_template(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.delete_one = AsyncMock()
+
+    await channels.deregister_template(mock_collection, mock_id)
+
+    mock_collection.delete_one.assert_awaited_once_with(
+        {"channel_id": str(mock_id), "type": "template"}
+    )
 
 
 @pytest.mark.asyncio
-async def test_deregister_template(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
-) -> None:
-    """Test the deregister_template function.
+async def test_deregister_clone(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.delete_one = AsyncMock()
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    await channels.deregister_clone(mock_collection, mock_id)
 
-    Returns:
-        None.
-    """
-    await mongo_collection.insert_one(
-        {"guild_id": str(test_id), "channel_id": str(test_id), "type": "template"}
+    mock_collection.delete_one.assert_awaited_once_with(
+        {"channel_id": str(mock_id), "type": "clone"}
     )
-
-    await channels.deregister_template(mongo_collection, test_id)
-
-    document = await mongo_collection.find_one(
-        {"channel_id": str(test_id), "type": "template"}
-    )
-
-    assert document is None
-
-    await mongo_collection.delete_many({})
 
 
 @pytest.mark.asyncio
-async def test_deregister_clone(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
-) -> None:
-    """Test the deregister_clone function.
+async def test_delete_guild_data(mock_id: hikari.Snowflake) -> None:
+    mock_collection = MagicMock()
+    mock_collection.delete_many = AsyncMock()
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    await channels.delete_guild_data(mock_collection, mock_id)
 
-    Returns:
-        None.
-    """
-    await mongo_collection.insert_one(
-        {
-            "guild_id": str(test_id),
-            "template_id": str(test_id),
-            "channel_id": str(test_id),
-            "owner_id": str(test_id),
-            "type": "clone",
-        }
-    )
-
-    await channels.deregister_clone(mongo_collection, test_id)
-
-    document = await mongo_collection.find_one(
-        {"channel_id": str(test_id), "type": "clone"}
-    )
-
-    assert document is None
-
-    await mongo_collection.delete_many({})
+    mock_collection.delete_many.assert_awaited_once_with({"guild_id": str(mock_id)})
 
 
 @pytest.mark.asyncio
-async def test_delete_guild_data(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
+async def test_template_exists_with_existing_template(
+    mock_id: hikari.Snowflake,
 ) -> None:
-    """Test the delete_guild_data function.
+    mock_collection = MagicMock()
+    mock_collection.find_one = AsyncMock()
+    mock_collection.find_one.return_value = {}
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    result = await channels.template_exists(mock_collection, mock_id)
 
-    Returns:
-        None.
-    """
-    await mongo_collection.insert_many(
-        [
-            {"guild_id": str(test_id), "channel_id": str(test_id), "type": "template"},
-            {
-                "guild_id": str(test_id),
-                "template_id": str(test_id),
-                "channel_id": str(test_id),
-                "owner_id": str(test_id),
-                "type": "clone",
-            },
-        ]
-    )
-
-    await channels.delete_guild_data(mongo_collection, test_id)
-
-    cursor = mongo_collection.find({"guild_id": str(test_id)})
-
-    document_list = await cursor.to_list(None)
-
-    assert document_list == []
-
-    await mongo_collection.delete_many({})
+    assert result
 
 
 @pytest.mark.asyncio
-async def test_template_exists(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
+async def test_template_exists_with_existing_template(
+    mock_id: hikari.Snowflake,
 ) -> None:
-    """Test the template_exists function.
+    mock_collection = MagicMock()
+    mock_collection.find_one = AsyncMock()
+    mock_collection.find_one.return_value = None
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    result = await channels.template_exists(mock_collection, mock_id)
 
-    Returns:
-        None.
-    """
-    await mongo_collection.insert_one(
-        {"guild_id": str(test_id), "channel_id": str(test_id), "type": "template"}
-    )
-
-    result = await channels.template_exists(mongo_collection, test_id)
-
-    assert result == True
-
-    await mongo_collection.delete_many({})
-
-    result = await channels.template_exists(mongo_collection, test_id)
-
-    assert result == False
+    assert not result
 
 
 @pytest.mark.asyncio
-async def test_clone_exists(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
+async def test_clone_exists_with_existing_template(
+    mock_id: hikari.Snowflake,
 ) -> None:
-    """Test the clone_exists function.
+    mock_collection = MagicMock()
+    mock_collection.find_one = AsyncMock()
+    mock_collection.find_one.return_value = {}
 
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
+    result = await channels.clone_exists(mock_collection, mock_id)
 
-    Returns:
-        None.
-    """
-    await mongo_collection.insert_one(
-        {
-            "guild_id": str(test_id),
-            "template_id": str(test_id),
-            "channel_id": str(test_id),
-            "owner_id": str(test_id),
-            "type": "clone",
-        },
-    )
+    assert result
 
-    result = await channels.clone_exists(mongo_collection, test_id)
 
-    assert result == True
+@pytest.mark.asyncio
+async def test_clone_exists_with_existing_template(
+    mock_id: hikari.Snowflake,
+) -> None:
+    mock_collection = MagicMock()
+    mock_collection.find_one = AsyncMock()
+    mock_collection.find_one.return_value = None
 
-    await mongo_collection.delete_many({})
+    result = await channels.clone_exists(mock_collection, mock_id)
 
-    result = await channels.clone_exists(mongo_collection, test_id)
+    assert not result
 
-    assert result == False
+
+@pytest.mark.asyncio
+async def test_is_in_lobby_with_no_guild_voice_state() -> None:
+    mock_collection = MagicMock()
+
+    mock_guild = MagicMock()
+    mock_guild.get_voice_state = MagicMock()
+    mock_guild.get_voice_state.return_value = None
+
+    mock_member = MagicMock()
+
+    result = await channels.is_in_lobby(mock_collection, mock_guild, mock_member)
+
+    assert not result
+
+
+@pytest.mark.asyncio
+async def test_is_in_lobby_with_no_channel_id() -> None:
+    mock_collection = MagicMock()
+
+    mock_guild = MagicMock()
+    mock_guild.get_voice_state = MagicMock()
+    mock_guild.get_voice_state.return_value = MagicMock()
+    mock_guild.get_voice_state.return_value.channel_id = None
+
+    mock_member = MagicMock()
+
+    result = await channels.is_in_lobby(mock_collection, mock_guild, mock_member)
+
+    assert not result
+
+
+@patch("lib.channels.get_clone", return_value=None)
+@pytest.mark.asyncio
+async def test_is_in_lobby_with_non_clone_channel(
+    mock_get_clone: MagicMock, mock_id: hikari.Snowflake
+) -> None:
+    mock_collection = MagicMock()
+
+    mock_guild = MagicMock()
+    mock_guild.get_voice_state = MagicMock()
+    mock_guild.get_voice_state.return_value = MagicMock()
+    mock_guild.get_voice_state.return_value.channel_id = mock_id
+    mock_guild.get_channel = MagicMock()
+    mock_guild.get_channel.return_value = MagicMock()
+
+    mock_member = MagicMock()
+
+    result = await channels.is_in_lobby(mock_collection, mock_guild, mock_member)
+
+    assert not result
 
 
 @patch("lib.channels.get_clone", return_value=MagicMock())
 @pytest.mark.asyncio
-async def test_is_in_lobby(
-    mongo_collection: motor.AsyncIOMotorCollection, test_id: hikari.Snowflake
+async def test_is_in_lobby_with_clone_channel(
+    mock_get_clone: MagicMock, mock_id: hikari.Snowflake
 ) -> None:
-    """Test the is_in_lobby function.
-
-    Arguments:
-        mongo_collection: The mongo_collection fixture.
-        test_id: The test_id fixture.
-
-    Returns:
-        None.
-    """
-    mock_voice_state = MagicMock()
-    mock_voice_state.channel_id = test_id
+    mock_collection = MagicMock()
 
     mock_guild = MagicMock()
-    mock_guild.get_voice_state.return_value = mock_voice_state
+    mock_guild.get_voice_state = MagicMock()
+    mock_guild.get_voice_state.return_value = MagicMock()
+    mock_guild.get_voice_state.return_value.channel_id = mock_id
+    mock_guild.get_channel = MagicMock()
     mock_guild.get_channel.return_value = MagicMock()
 
-    assert await channels.is_in_lobby(mongo_collection, mock_guild, MagicMock()) == True
+    mock_member = MagicMock()
 
-    mock_voice_state.channel_id = None
-    mock_guild.get_voice_state.return_value = mock_voice_state
+    result = await channels.is_in_lobby(mock_collection, mock_guild, mock_member)
 
-    assert (
-        await channels.is_in_lobby(mongo_collection, mock_guild, MagicMock()) == False
-    )
-
-    mock_voice_state = None
-    mock_guild.get_voice_state.return_value = mock_voice_state
-
-    assert (
-        await channels.is_in_lobby(mongo_collection, mock_guild, MagicMock()) == False
-    )
+    assert result
