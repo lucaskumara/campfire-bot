@@ -20,7 +20,7 @@ async def detect_profanity_on_message(event: hikari.GuildMessageCreateEvent) -> 
     Returns:
         None.
     """
-    collection = plugin.bot.d.mongo_database.settings
+    collection = plugin.bot.d.mongo_database.data
 
     response = openai.prompt(
         f"""
@@ -53,7 +53,7 @@ async def toggle_profanity_filter(
     Returns:
         None.
     """
-    collection = plugin.bot.d.mongo_database.settings
+    collection = plugin.bot.d.mongo_database.data
 
     if await profanity.is_filter_enabled(collection, context.guild_id):
         await profanity.disable_filter(collection, context.guild_id)

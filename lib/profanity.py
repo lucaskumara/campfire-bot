@@ -17,7 +17,7 @@ async def is_filter_enabled(
     """
     document = await collection.find_one({"guild_id": str(guild_id)})
 
-    return document.get("profanity_filter", False) if document is not None else False
+    return document.get("filter_profanity", False) if document is not None else False
 
 
 async def enable_filter(
@@ -33,7 +33,7 @@ async def enable_filter(
         None.
     """
     await collection.update_one(
-        {"guild_id": str(guild_id)}, {"$set": {"profanity_filter": True}}, upsert=True
+        {"guild_id": str(guild_id)}, {"$set": {"filter_profanity": True}}, upsert=True
     )
 
 
@@ -50,5 +50,5 @@ async def disable_filter(
         None.
     """
     await collection.update_one(
-        {"guild_id": str(guild_id)}, {"$set": {"profanity_filter": False}}, upsert=True
+        {"guild_id": str(guild_id)}, {"$set": {"filter_profanity": False}}, upsert=True
     )
